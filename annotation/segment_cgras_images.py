@@ -15,6 +15,114 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+from copy import deepcopy
+
+# website/blog that finally describes the yolov5/8 format for masks as bounding polygons
+# https://towardsdatascience.com/trian-yolov8-instance-segmentation-on-your-data-6ffa04b2debd
+# class# <x1 y1 x2 y2 ...>
+#  where x y coordinates are normalised to 1 wrt image width and height, respectively
+def get_bounding_polygon(mask_binary):
+        """get_bounding_polygon
+        Finds the contour surrounding the blobs within the binary mask
+
+        Args:
+            mask_binary (uint8 2D numpy array): binary mask
+
+        Returns:
+            all_x, all_y: all the x, y points of the contours as lists
+        """        
+        # convert to correct type for findcontours
+        if not mask_binary.dtype == np.uint8:
+            mask_binary = mask_binary.astype(np.uint8) 
+
+        # find bounding polygon of binary image
+        contours_in, hierarchy = cv.findContours(mask_binary, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        contours = list(contours_in)
+        # we take the largest contour as the most likely polygon from the mask
+        contours.sort(key=len, reverse=True)
+        largest_contour = contours[0]
+        largest_contour_squeeze = np.squeeze(largest_contour)
+        all_x, all_y = [], []
+        for c in largest_contour_squeeze:
+            all_x.append(c[0])
+            all_y.append(c[1])
+
+        return all_x, all_y
+
+
+def plot_poly(image,
+              poly,
+              lines_thick,
+              font_scale,
+              lines_color,
+              font_thick):
+        """plot_poly
+        plot detection polygon onto image
+
+        Args:
+            image (_type_): _description_
+            detection (_type_): _description_
+            lines_thick (_type_): _description_
+            font_scale (_type_): _description_
+            lines_color (_type_): _description_
+            font_thick (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """        
+        # reshape polygon from (x, y) array lists to vertical for polylines 
+        poly = poly.transpose().reshape((-1, 1, 2))
+        # draw polygons onto image
+        cv.polylines(image,
+                     pts=np.int32([poly]),
+                     isClosed=True,
+                     color=lines_color,
+                     thickness=lines_thick,
+                     lineType=cv.LINE_4)
+
+        # find a place to put polygon class prediction and confidence we find
+        # the x,y-pair that's closest to the top-left corner of the image, but
+        # also need it to be ON the polygon, so we know which one it is and thus
+        # most likely to actually be in the image
+        # distances = np.linalg.norm(detection.poly, axis=0)
+        # minidx = np.argmin(distances)
+        # xmin = detection.poly[0, minidx]
+        # ymin = detection.poly[1, minidx]
+
+        # add text to top left corner of box
+        # class + confidence as a percent
+        # conf_str = format(detection.score * 100.0, '.0f')
+        # detection_str = '{}: {}'.format(detection.class_name, conf_str) 
+        
+        # image = draw_rectangle_with_text(image, 
+        #                                 text=detection_str,
+        #                                 xy=(xmin, ymin), 
+        #                                 font_scale=font_scale, 
+        #                                 font_thickness=font_thick, 
+        #                                 rect_color=lines_color)
+        return image
+
+
+def save_image(image, image_filename: str):
+    """save_image
+    write image to file, given image and image_filename, assume image in in
+    RGB format
+
+    Args:
+        image (_type_): _description_
+        image_filename (str): _description_
+
+    Returns:
+        _type_: _description_
+    """     
+    # make sure directory exists
+    image_dir = os.path.dirname(image_filename)
+    os.makedirs(image_dir, exist_ok=True)
+
+    # assuming image is in RGB format, so convert back to BGR
+    image = cv.cvtColor(image, cv.COLOR_RGB2BGR)
+    cv.imwrite(image_filename, image)
+    return True
 
 
 def show_anns(anns):
@@ -42,9 +150,9 @@ print(f'img size = {image.shape}')
 
 
 # resize image
-scale = 0.5
-image = cv.resize(image, (0,0), fx=scale, fy=scale)
-print(f'resize img size = {image.shape}')
+scale = 0.5 # the max I can do without running into space errors currently, need to recale the annotations
+image_r = cv.resize(image, (0,0), fx=scale, fy=scale)
+print(f'resize img size = {image_r.shape}')
 
 # segment anything
 sam = sam_model_registry['vit_h'](checkpoint='/home/dorian/Code/cgras_ws/segment-anything/model/sam_vit_h_4b8939.pth')
@@ -54,7 +162,7 @@ sam.to(device='cuda')
 # masks, _, _= predictor.predict('prompt')
 
 mask_generator = SamAutomaticMaskGenerator(sam)
-masks = mask_generator.generate(image)
+masks = mask_generator.generate(image_r)
 
 # Mask generation returns a list over masks, where each mask is a dictionary containing various data about the mask. These keys are:
 # * `segmentation` : the mask
@@ -68,11 +176,58 @@ masks = mask_generator.generate(image)
 print(len(masks))
 print(masks[0].keys())
 
+# sort masks wrt area in reverse order (largest first)
+sorted_masks = sorted(masks, key=(lambda x: x['area']), reverse=True)
+
+# code to show the whole image with masks ontop     
 # plt.figure(figsize=(20,20))
 # plt.imshow(image)
 # show_anns(masks)
 # plt.axis('off')
 # plt.show() 
+
+# TODO can put these all into a single for loop
+
+# get bounding polygons for each
+for mask in sorted_masks:
+    mask_bin = mask['segmentation'].astype(np.uint8)
+    x, y = get_bounding_polygon(mask_bin)
+    poly = np.array((x, y))
+    mask['poly'] = poly
+
+# rescale to original image size
+polygons = []
+for mask in sorted_masks:
+    p = mask['poly']
+    polygons.append(p / scale)
+
+
+# image plotting settings
+lines_thick = int(np.ceil(0.002 * max(image.shape)))
+font_scale = max(1, 0.0005 * max(image.shape))
+lines_color = [255, 0, 0]
+font_thick = int(np.ceil(0.00045 * max(image.shape)))
+
+# plot polygons over original image scale
+# plot polygons onto image
+
+image_p = deepcopy(image)
+
+for i, p in enumerate(polygons):
+    # if i == 0:
+    #      # try skipping the first one?
+    #      continue
+    # else:
+    plot_poly(image_p, p, lines_thick, font_scale, lines_color, font_thick)
+    
+
+# save image
+save_img_name = 'image_with_polygons.png'
+save_image(image_p, os.path.join(os.getcwd(), save_img_name))
+
+    
+    
+
 
 import code
 code.interact(local=dict(globals(), **locals()))
