@@ -141,19 +141,6 @@ def show_anns(anns):
             img[:,:,i] = color_mask[i]
         ax.imshow(np.dstack((img, m*0.35)))
 
-# sample image
-img_dir = '/home/dorian/Data/cgras_dataset_20230403_small'
-img_files = sorted(os.listdir(img_dir))
-image = cv.imread(os.path.join(img_dir, img_files[0]))
-image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
-print(f'img size = {image.shape}')
-
-
-# resize image
-scale = 0.5 # the max I can do without running into space errors currently, need to recale the annotations
-image_r = cv.resize(image, (0,0), fx=scale, fy=scale)
-print(f'resize img size = {image_r.shape}')
-
 # segment anything
 sam = sam_model_registry['vit_h'](checkpoint='/home/dorian/Code/cgras_ws/segment-anything/model/sam_vit_h_4b8939.pth')
 sam.to(device='cuda')
@@ -162,71 +149,91 @@ sam.to(device='cuda')
 # masks, _, _= predictor.predict('prompt')
 
 mask_generator = SamAutomaticMaskGenerator(sam)
-masks = mask_generator.generate(image_r)
-
-# Mask generation returns a list over masks, where each mask is a dictionary containing various data about the mask. These keys are:
-# * `segmentation` : the mask
-# * `area` : the area of the mask in pixels
-# * `bbox` : the boundary box of the mask in XYWH format
-# * `predicted_iou` : the model's own prediction for the quality of the mask
-# * `point_coords` : the sampled input point that generated this mask
-# * `stability_score` : an additional measure of mask quality
-# * `crop_box` : the crop of the image used to generate this mask in XYWH format
-
-print(len(masks))
-print(masks[0].keys())
-
-# sort masks wrt area in reverse order (largest first)
-sorted_masks = sorted(masks, key=(lambda x: x['area']), reverse=True)
-
-# code to show the whole image with masks ontop     
-# plt.figure(figsize=(20,20))
-# plt.imshow(image)
-# show_anns(masks)
-# plt.axis('off')
-# plt.show() 
-
-# TODO can put these all into a single for loop
-
-# get bounding polygons for each
-for mask in sorted_masks:
-    mask_bin = mask['segmentation'].astype(np.uint8)
-    x, y = get_bounding_polygon(mask_bin)
-    poly = np.array((x, y))
-    mask['poly'] = poly
-
-# rescale to original image size
-polygons = []
-for mask in sorted_masks:
-    p = mask['poly']
-    polygons.append(p / scale)
 
 
-# image plotting settings
-lines_thick = int(np.ceil(0.002 * max(image.shape)))
-font_scale = max(1, 0.0005 * max(image.shape))
-lines_color = [255, 0, 0]
-font_thick = int(np.ceil(0.00045 * max(image.shape)))
+# image rescale/down-size requirements
+scale = 0.5 # the max I can do without running into space errors currently, need to recale the annotations
 
-# plot polygons over original image scale
-# plot polygons onto image
+# sample image
+img_dir = '/home/dorian/Data/cgras_dataset_20230403_small'
+img_files = sorted(os.listdir(img_dir))
 
-image_p = deepcopy(image)
+# output directory
+out_dir = '/home/dorian/Data/cgras_dataset_20230403_small_poly'
+os.makedirs(out_dir, exist_ok=True)
 
-for i, p in enumerate(polygons):
-    # if i == 0:
-    #      # try skipping the first one?
-    #      continue
-    # else:
-    plot_poly(image_p, p, lines_thick, font_scale, lines_color, font_thick)
+
+for i, image_name in enumerate(img_files):
+    print(f'{i+1}/{len(img_files)}: masking {image_name}')
+     
+    image = cv.imread(os.path.join(img_dir, image_name))
+    image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+    # print(f'img size = {image.shape}')
+    
+    # image plotting settings
+    lines_thick = int(np.ceil(0.002 * max(image.shape)))
+    font_scale = max(1, 0.0005 * max(image.shape))
+    lines_color = [255, 0, 0]
+    font_thick = int(np.ceil(0.00045 * max(image.shape)))
+
+    # downsize image
+    image_r = cv.resize(image, (0,0), fx=scale, fy=scale)
+    # print(f'resize img size = {image_r.shape}')
+
+    masks = mask_generator.generate(image_r)
+
+    # Mask generation returns a list over masks, where each mask is a dictionary containing various data about the mask. These keys are:
+    # * `segmentation` : the mask
+    # * `area` : the area of the mask in pixels
+    # * `bbox` : the boundary box of the mask in XYWH format
+    # * `predicted_iou` : the model's own prediction for the quality of the mask
+    # * `point_coords` : the sampled input point that generated this mask
+    # * `stability_score` : an additional measure of mask quality
+    # * `crop_box` : the crop of the image used to generate this mask in XYWH format
+
+    # print(len(masks))
+    # print(masks[0].keys())
+
+    # sort masks wrt area in reverse order (largest first)
+    sorted_masks = sorted(masks, key=(lambda x: x['area']), reverse=True)
+
+    # code to show the whole image with masks ontop     
+    # plt.figure(figsize=(20,20))
+    # plt.imshow(image)
+    # show_anns(masks)
+    # plt.axis('off')
+    # plt.show() 
+
+    # get bounding polygons for each
+    polygons_unscaled = []
+    for mask in sorted_masks:
+        mask_bin = mask['segmentation'].astype(np.uint8)
+        x, y = get_bounding_polygon(mask_bin)
+        poly = np.array((x, y))
+        mask['poly'] = poly
+        # rescale to original image size
+        polygons_unscaled.append(poly / scale)
+
+    # plot polygons over original image scale
+    # plot polygons onto image
+    image_p = deepcopy(image)
+
+    for i, p in enumerate(polygons_unscaled):
+        # if i == 0:
+        #      # try skipping the first one?
+        #      continue
+        # else:
+        plot_poly(image_p, p, lines_thick, font_scale, lines_color, font_thick)
     
 
-# save image
-save_img_name = 'image_with_polygons.png'
-save_image(image_p, os.path.join(os.getcwd(), save_img_name))
+    # save image
+    save_img_name = os.path.splitext(image_name)[0] + '_polygons.png'
+    save_image(image_p, os.path.join(out_dir, save_img_name))
 
-    
-    
+    # TODO remove background polygon - hack wrt image size
+    # TODO convert polygons into YOLO format
+    # TODO save as .txt file to upload to CVAT
+print('Done')
 
 
 import code
