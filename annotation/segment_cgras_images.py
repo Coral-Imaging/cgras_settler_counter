@@ -103,6 +103,7 @@ def plot_poly(image,
         return image
 
 
+
 def save_image(image, image_filename: str):
     """save_image
     write image to file, given image and image_filename, assume image in in
@@ -141,6 +142,17 @@ def show_anns(anns):
             img[:,:,i] = color_mask[i]
         ax.imshow(np.dstack((img, m*0.35)))
 
+
+# determine if a is within a specified percentage of b, returning True otherwise
+# False
+def is_within_percent(a, b, percent):
+     threshold = abs(b * percent / 100.0)
+     return abs(a - b) <= threshold
+
+
+
+
+########################################################################################################################
 # segment anything
 sam = sam_model_registry['vit_h'](checkpoint='/home/dorian/Code/cgras_ws/segment-anything/model/sam_vit_h_4b8939.pth')
 sam.to(device='cuda')
@@ -168,6 +180,7 @@ for i, image_name in enumerate(img_files):
      
     image = cv.imread(os.path.join(img_dir, image_name))
     image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+    # image_width, image_height = image.shape()
     # print(f'img size = {image.shape}')
     
     # image plotting settings
@@ -204,6 +217,18 @@ for i, image_name in enumerate(img_files):
     # plt.axis('off')
     # plt.show() 
 
+    # remove background polygon - hack wrt image size
+    # largest_mask = sorted_masks[0]
+    # if largest_mask['bbox'][2] is within 80% of image_width and Y is within 80% of image_height
+    
+    image_width, image_height, _ = image.shape
+    largest_mask = sorted_masks[0]
+    largest_mask_width = largest_mask['bbox'][2] / scale
+    largest_mask_height = largest_mask['bbox'][3] / scale
+    if is_within_percent(largest_mask_width, image_width, 80) and is_within_percent(largest_mask_height, image_height, 80):
+         # largest mask is basically just image boundary/background, so remove
+        del sorted_masks[0]
+
     # get bounding polygons for each
     polygons_unscaled = []
     for mask in sorted_masks:
@@ -230,9 +255,9 @@ for i, image_name in enumerate(img_files):
     save_img_name = os.path.splitext(image_name)[0] + '_polygons.png'
     save_image(image_p, os.path.join(out_dir, save_img_name))
 
-    # TODO remove background polygon - hack wrt image size
     # TODO convert polygons into YOLO format
     # TODO save as .txt file to upload to CVAT
+    
 print('Done')
 
 
