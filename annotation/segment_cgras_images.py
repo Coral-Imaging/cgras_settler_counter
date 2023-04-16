@@ -146,8 +146,22 @@ def show_anns(anns):
 # determine if a is within a specified percentage of b, returning True otherwise
 # False
 def is_within_percent(a, b, percent):
-     threshold = abs(b * percent / 100.0)
-     return abs(a - b) <= threshold
+    threshold = abs(b * percent / 100.0)
+    return abs(a - b) <= threshold
+
+
+def convert_polygon_to_yolo(poly, image_size):
+    # convert poylgon of image coordinates to yolo format
+    # TODO check
+    image_width, image_height = image_size
+    xp, yp = poly # TODO might be able to iterate over xy pairs instead
+    x_yolo = []
+    y_yolo = []
+    for i, x in enumerate(xp):
+        x_yolo.append(x / image_width)
+        y_yolo.append(yp[i] / image_height)
+    return (x_yolo, y_yolo)
+    
 
 
 
