@@ -163,6 +163,27 @@ def convert_polygon_to_yolo(poly, image_size):
     return (x_yolo, y_yolo)
     
 
+def create_yolo_dataset_files(filename, labels, polygons):
+    """create_yolo_dataset_files
+    given labels of polygons, polygons, filename to save in, save yolo text file
+    """
+    # TODO check
+
+    # make sure output dir exists/create it
+    output_dir = os.path.dirname(filename)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # create line
+    with open(filename, 'w') as f:
+        for label in labels:
+            poly_str = x, y # TODO, how to iterate over polygon x,y pairs
+            line_to_write = label + poly_str
+            # write line to text
+            f.write(line_to_write + '\n')
+
+
+    
+
 
 
 
@@ -178,7 +199,8 @@ mask_generator = SamAutomaticMaskGenerator(sam)
 
 
 # image rescale/down-size requirements
-scale = 0.5 # the max I can do without running into space errors currently, need to recale the annotations
+# NOTE: SAM scales everything to 1024x1024 anyways, so feeding in higher-res images is pointless
+scale = 0.25 # the max I can do without running into space errors currently, need to recale the annotations
 
 # sample image
 img_dir = '/home/dorian/Data/cgras_dataset_20230403_small'
