@@ -150,11 +150,9 @@ def is_within_percent(a, b, percent):
     return abs(a - b) <= threshold
 
 
-def convert_polygon_to_yolo(poly, image_size):
+def convert_polygon_to_yolo(poly, image_width, image_height):
     # convert poylgon of image coordinates to yolo format
-    # TODO check
-    image_width, image_height = image_size
-    xp, yp = poly # TODO might be able to iterate over xy pairs instead
+    xp, yp = poly
     x_yolo = []
     y_yolo = []
     for i, x in enumerate(xp):
@@ -175,9 +173,15 @@ def create_yolo_dataset_files(filename, labels, polygons):
 
     # create line
     with open(filename, 'w') as f:
-        for label in labels:
-            poly_str = x, y # TODO, how to iterate over polygon x,y pairs
-            line_to_write = label + poly_str
+        for i, label in enumerate(labels):
+            poly = polygons[i] # TODO, how to iterate over polygon x,y pairs
+            xp, yp = poly
+            poly_str = []
+            for j, x in enumerate(xp):
+                xformat = "{:.6f}".format(x)
+                yformat = "{:.6f}".format(yp[j])
+                poly_str.append(xformat + ' ' + yformat)
+            line_to_write = str(label) + ' ' + ' '.join(poly_str)
             # write line to text
             f.write(line_to_write + '\n')
 
@@ -206,13 +210,25 @@ scale = 0.25 # the max I can do without running into space errors currently, nee
 img_dir = '/home/dorian/Data/cgras_dataset_20230403_small'
 img_files = sorted(os.listdir(img_dir))
 
+# default class, because we don't know class:
+# live single settler without symbiont = label 
+label_default = 1
+
 # output directory
 out_dir = '/home/dorian/Data/cgras_dataset_20230403_small_poly'
 os.makedirs(out_dir, exist_ok=True)
 
+# output annotation file
+out_label_dir = os.path.join(out_dir, 'labels') 
+os.makedirs(out_label_dir, exist_ok=True)
 
+# iterate over the image files
+# MAX_IMG = 2
 for i, image_name in enumerate(img_files):
+    # if i >= MAX_IMG:
+    #     break
     print(f'{i+1}/{len(img_files)}: masking {image_name}')
+
      
     image = cv.imread(os.path.join(img_dir, image_name))
     image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
@@ -256,8 +272,7 @@ for i, image_name in enumerate(img_files):
     # remove background polygon - hack wrt image size
     # largest_mask = sorted_masks[0]
     # if largest_mask['bbox'][2] is within 80% of image_width and Y is within 80% of image_height
-    
-    image_width, image_height, _ = image.shape
+    image_height, image_width, _ = image.shape
     largest_mask = sorted_masks[0]
     largest_mask_width = largest_mask['bbox'][2] / scale
     largest_mask_height = largest_mask['bbox'][3] / scale
@@ -286,13 +301,20 @@ for i, image_name in enumerate(img_files):
         # else:
         plot_poly(image_p, p, lines_thick, font_scale, lines_color, font_thick)
     
-
     # save image
     save_img_name = os.path.splitext(image_name)[0] + '_polygons.png'
     save_image(image_p, os.path.join(out_dir, save_img_name))
 
-    # TODO convert polygons into YOLO format
-    # TODO save as .txt file to upload to CVAT
+    # convert polygons into YOLO format and create labels
+    polygons_norm = []
+    labels = []
+    for p in polygons_unscaled:
+        polygons_norm.append(convert_polygon_to_yolo(p, image_width, image_height))
+        labels.append(label_default)
+    
+    # save as .txt file to upload to CVAT
+    output_file = os.path.splitext(image_name)[0] + '.txt'
+    create_yolo_dataset_files(os.path.join(out_label_dir, output_file), labels, polygons_norm)
     
 print('Done')
 
