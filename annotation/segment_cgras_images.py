@@ -16,6 +16,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 from copy import deepcopy
+import xml.etree.ElementTree as ET
+
 
 # website/blog that finally describes the yolov5/8 format for masks as bounding polygons
 # https://towardsdatascience.com/trian-yolov8-instance-segmentation-on-your-data-6ffa04b2debd
@@ -186,9 +188,68 @@ def create_yolo_dataset_files(filename, labels, polygons):
             f.write(line_to_write + '\n')
 
 
+def create_cvat_annotation_file(input_file, output_file, image_files, class_labels, polygons):
+    """create_cvat_annotation_file
+    modifies a cvat annotation file given filename to save, labels of the polygons
+    and corresponding polygons
+    NOTE: cvat annotation file needs to be downloaded from apps.cvat.ai first
     
 
+    Args:
+        filename (_type_): _description_ labels (_type_): _description_ polygons
+        (_type_): _description_
+    """
 
+    # create tree, get root
+    tree = ET.ElementTree(file=input_file)
+    root = tree.getroot()
+
+    # iterate through annotation file and find each image
+    for elem in root.iterfind('.//image'):
+
+        # get image name from annotation file
+        img_name_ann = elem.attrib['name']
+
+        # find the corresponding name and index in image_files
+        if img_name_ann in image_files:
+            index = image_files.index(img_name_ann)
+            # TODO remove pre-existing annotations?
+            
+            
+            for i, poly in enumerate(polygons[index]):
+                # append in your own as a dictionary
+                poly_dict = convert_poly_to_dict(poly, class_labels[index][i])
+                poly_elem = ET.SubElement(elem, 'polygon', poly_dict)
+
+        else:
+            print(f'image {img_name_ann} is not in image_files list')
+
+    # write to html
+    tree.write(output_file)
+
+
+def convert_poly_to_dict(polygon, label):
+    """ convert polygon to dictionary """
+    # other polygon properties from annotations.xml
+    source = 'manual'
+    occluded = '0'
+    z_order = '0'
+
+
+    polygon_points = []
+    xp, yp = polygon
+    for i, x in enumerate(xp):
+        xformat = "{:.2f}".format(x)
+        yformat = "{:.2f}".format(yp[i])
+        polygon_points.append(xformat + ',' + yformat)
+    polygon_str = ';'.join(polygon_points)
+
+    poly_dict = {'label': label,
+                 'occluded': '0',
+                 'source': 'manual',
+                 'z_order': '0',
+                 'points': polygon_str}
+    return poly_dict
 
 
 ########################################################################################################################
@@ -208,11 +269,12 @@ scale = 0.25 # the max I can do without running into space errors currently, nee
 
 # sample image
 img_dir = '/home/dorian/Data/cgras_dataset_20230403_small'
-img_files = sorted(os.listdir(img_dir))
+image_files = sorted(os.listdir(img_dir))
 
 # default class, because we don't know class:
 # live single settler without symbiont = label 
 label_default = 1
+class_label_default = 'recruit_live_white'
 
 # output directory
 out_dir = '/home/dorian/Data/cgras_dataset_20230403_small_poly'
@@ -222,12 +284,20 @@ os.makedirs(out_dir, exist_ok=True)
 out_label_dir = os.path.join(out_dir, 'labels') 
 os.makedirs(out_label_dir, exist_ok=True)
 
+output_file = os.path.join(out_dir, 'annotations_updated.xml')
+
+# input annotation file
+input_file = os.path.join(out_dir, 'annotations.xml')
+
 # iterate over the image files
 # MAX_IMG = 2
-for i, image_name in enumerate(img_files):
+polygons_all = []
+class_labels_all = []
+
+for i, image_name in enumerate(image_files):
     # if i >= MAX_IMG:
     #     break
-    print(f'{i+1}/{len(img_files)}: masking {image_name}')
+    print(f'{i+1}/{len(image_files)}: masking {image_name}')
 
      
     image = cv.imread(os.path.join(img_dir, image_name))
@@ -308,16 +378,28 @@ for i, image_name in enumerate(img_files):
     # convert polygons into YOLO format and create labels
     polygons_norm = []
     labels = []
+    class_labels = []
     for p in polygons_unscaled:
         polygons_norm.append(convert_polygon_to_yolo(p, image_width, image_height))
         labels.append(label_default)
+        class_labels.append(class_label_default)
     
     # save as .txt file to upload to CVAT
-    output_file = os.path.splitext(image_name)[0] + '.txt'
-    create_yolo_dataset_files(os.path.join(out_label_dir, output_file), labels, polygons_norm)
+    # output_file = os.path.splitext(image_name)[0] + '.txt'
+    # create_yolo_dataset_files(os.path.join(out_label_dir, output_file), labels, polygons_norm)
     
-print('Done')
+    polygons_all.append(polygons_unscaled)
+    class_labels_all.append(class_labels)
+   
 
+ # save as .xml file to upload to CVAT
+create_cvat_annotation_file(input_file=input_file, 
+                            output_file=output_file, 
+                            image_files=image_files, 
+                            class_labels=class_labels_all, 
+                            polygons=polygons_all)
+
+print('Done')
 
 import code
 code.interact(local=dict(globals(), **locals()))
