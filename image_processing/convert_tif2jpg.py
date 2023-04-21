@@ -7,11 +7,11 @@ from PIL import Image
 import os
 
 # tiff directory
-tif_dir = '/home/dorian/Data/cgras_dataset_20230403/tif'
+tif_dir = '/home/dorian/Data/cgras_dataset_20230421/tif'
 
 
 # jpg out directory
-jpg_dir = '/home/dorian/Data/cgras_dataset_20230403/jpg'
+jpg_dir = '/home/dorian/Data/cgras_dataset_20230421/jpg'
 os.makedirs(jpg_dir, exist_ok=True)
 
 for i, filename in enumerate(os.listdir(tif_dir)):
