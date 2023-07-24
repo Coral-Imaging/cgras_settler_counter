@@ -265,11 +265,15 @@ mask_generator = SamAutomaticMaskGenerator(sam)
 
 # image rescale/down-size requirements
 # NOTE: SAM scales everything to 1024x1024 anyways, so feeding in higher-res images is pointless
-scale = 0.25 # the max I can do without running into space errors currently, need to recale the annotations
+# scale = 0.25 # the max I can do without running into space errors currently, need to recale the annotations
+scale = 0.75
 
 # sample image
-img_dir = '/home/dorian/Data/cgras_dataset_20230403_small'
-image_files = sorted(os.listdir(img_dir))
+# img_dir = '/home/dorian/Data/cgras_dataset_20230421/jpg_cgras_20230421'
+img_dir = '/home/dorian/Dropbox/QUT/GreatBarrierReefRestoration_Automation/20230529_AIMS_DataAnnotationWorkshop/SAM'
+
+import glob
+image_files = sorted(glob.glob(os.path.join(img_dir, '*.jpg')))
 
 # default class, because we don't know class:
 # live single settler without symbiont = label 
@@ -277,7 +281,8 @@ label_default = 1
 class_label_default = 'recruit_live_white'
 
 # output directory
-out_dir = '/home/dorian/Data/cgras_dataset_20230403_small_poly'
+# out_dir = '/home/dorian/Data/cgras_dataset_20230421/metadata'
+out_dir = img_dir
 os.makedirs(out_dir, exist_ok=True)
 
 # output annotation file
@@ -332,12 +337,16 @@ for i, image_name in enumerate(image_files):
     # sort masks wrt area in reverse order (largest first)
     sorted_masks = sorted(masks, key=(lambda x: x['area']), reverse=True)
 
-    # code to show the whole image with masks ontop     
-    # plt.figure(figsize=(20,20))
-    # plt.imshow(image)
-    # show_anns(masks)
-    # plt.axis('off')
-    # plt.show() 
+    # code to show the whole image with masks ontop   
+    SHOW = False
+    if SHOW:  
+        plt.figure(figsize=(20,20))
+        plt.imshow(image_r)
+        show_anns(masks)
+        plt.axis('off')
+        plt.show() 
+    
+    
 
     # remove background polygon - hack wrt image size
     # largest_mask = sorted_masks[0]
