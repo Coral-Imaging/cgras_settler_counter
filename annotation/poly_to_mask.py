@@ -174,7 +174,7 @@ def polyxml_to_maskxml(source_file: str,
                             for point in polygon_points.split(';')])
 
             # convert the points into rle format
-            rle_string, left, top, width, height = poly_2_rle(points)
+            rle_string, left, top, width, height = poly_2_rle(points, SHOW_IMAGE)
 
              # If converstion needs to be checked
             rle_list = list(map(str, rle_string.split(','))) #rle into list
@@ -228,4 +228,8 @@ def test_rle_to_mask(source_file: str):
 
 #test_rle_to_mask(source_file='masks.xml')
 
-polyxml_to_maskxml(source_file='annotations.xml', output_filename='ziptest.xml', SHOW_IMAGE=False)
+def main():
+    polyxml_to_maskxml(source_file='annotations.xml', output_filename='complete.xml', SHOW_IMAGE=False)
+
+if __name__ == "__main__":
+    main()
