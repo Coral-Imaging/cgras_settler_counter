@@ -130,5 +130,4 @@ dmypy.json
 # gitignore weights and bases
 wandb/
 .pt
-home/java/Java/cgras/cgras_settler_counter/yolov8x-seg.pt
 yolov8x-seg.pt
