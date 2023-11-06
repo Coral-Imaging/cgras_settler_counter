@@ -103,7 +103,7 @@ def poly_2_rle(points,
     cv2.fillPoly(mask, [points.astype(int)], color=1)
 
     # visual check of mask - looks good
-    SHOW_IMAGE = False
+    #SHOW_IMAGE = False
     if (SHOW_IMAGE):
         plt.imshow(mask, cmap='binary')
         plt.show()
@@ -229,7 +229,7 @@ def test_rle_to_mask(source_file: str):
 #test_rle_to_mask(source_file='masks.xml')
 
 def main():
-    polyxml_to_maskxml(source_file='annotations.xml', output_filename='complete.xml', SHOW_IMAGE=False)
+   polyxml_to_maskxml(source_file='annotations.xml', output_filename='complete.xml', SHOW_IMAGE=False)
 
 if __name__ == "__main__":
     main()
