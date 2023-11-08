@@ -9,29 +9,7 @@ from xml.etree.ElementTree import Element, SubElement, ElementTree
 import code
 import matplotlib.pyplot as plt
 import zipfile
-
-def binary_mask_to_rle(binary_mask):
-    """binary_mask_to_rle
-    Convert a binary np array into a RLE format
-    
-    Args:
-        binary_mask (uint8 2D numpy array): binary mask
-
-    Returns:
-        rle: list of rle numbers
-    """
-    rle = []
-    current_pixel = 0
-    run_length = 0
-
-    for pixel in binary_mask.ravel(order='C'): #go through the flaterened binary mask
-        if pixel == current_pixel:  #increase number if same pixel
-            run_length += 1
-        else: #else save run length and reset
-            rle.append(run_length) 
-            run_length = 1
-            current_pixel = pixel
-    return rle
+from Utils import binary_mask_to_rle, poly_2_rle
 
 def rle_to_binary_mask(rle_list, 
                        width: int, 
@@ -69,52 +47,6 @@ def rle_to_binary_mask(rle_list,
         plt.show()
 
     return mask
-
-def poly_2_rle(points, 
-               SHOW_IMAGE: bool):
-    """poly_2_rle
-    Converts a set of points for a polygon into an rle string and saves the data
-
-    Args:
-        points (2D numpy array): points of polygon
-        SHOW_IMAGE (bool): True if binary mask wants to be viewed
-    
-    Returns:
-        rle_string: string of the rle numbers,
-        left: (int) left positioning of the rle numbers in pixles,
-        top: (int) top positioning of the rle numbers in pixles,
-        width: (int) width of the bounding box of the rle numbers in pixels,
-        height: (int) height of the bounding box of the rle numbers in pixles
-    """
-    # create bounding box
-    left = int(np.min(points[:, 0]))
-    top = int(np.min(points[:, 1]))
-    right = int(np.max(points[:, 0]))
-    bottom = int(np.max(points[:, 1]))
-    width = right - left + 1
-    height = bottom - top + 1
-
-    # create mask size of bounding box
-    mask = np.zeros((height, width), dtype=np.uint8)
-    # points relative to bounding box
-    points[:, 0] -= left
-    points[:, 1] -= top
-    # fill mask where points are
-    cv2.fillPoly(mask, [points.astype(int)], color=1)
-
-    # visual check of mask - looks good
-    #SHOW_IMAGE = False
-    if (SHOW_IMAGE):
-        plt.imshow(mask, cmap='binary')
-        plt.show()
-
-    # convert the mask into a rle
-    mask_rle = binary_mask_to_rle(mask)
-
-    # rle string
-    rle_string = ",".join(map(str, mask_rle))
-    
-    return rle_string, left, top, width, height
 
 def polyxml_to_maskxml(source_file: str, 
                        output_filename: str, 
@@ -174,7 +106,7 @@ def polyxml_to_maskxml(source_file: str,
                             for point in polygon_points.split(';')])
 
             # convert the points into rle format
-            rle_string, left, top, width, height = poly_2_rle(points, SHOW_IMAGE)
+            rle_string, left, top, width, height = poly_2_rle(points, ',', SHOW_IMAGE)
 
              # If converstion needs to be checked
             rle_list = list(map(str, rle_string.split(','))) #rle into list
