@@ -19,7 +19,6 @@ save_dir = '/home/java/Java/data/cgras_20230421'
 img_folder = '/home/java/Java/data/cgras_20230421/train/images'
 txt_folder = '/home/java/Java/data/cgras_20230421/train/labels'
 
-
 #save txt results like they would be saved by ultralytics
 def save_txt_predictions_masks(results, conf, class_list, save_path):
     masks = results[0].masks
@@ -94,7 +93,6 @@ model = YOLO(weights_file_path).to(device)
 # get predictions
 print('Model Inference:')
 
-
 imglist = sorted(glob.glob(os.path.join(img_folder, '*.jpg')))
 txtlist = sorted(glob.glob(os.path.join(txt_folder, '*.txt')))
 imgsave_dir = os.path.join(save_dir, 'detections', 'detections_images')
@@ -114,11 +112,6 @@ for i, imgname in enumerate(imglist):
     txt = txtlist[i]
     ground_truth = True
     save_image_predictions_mask(results, image, imgname, imgsave_dir, class_list, classes, class_colours, ground_truth, txt)
-
-
-# for interactive debugger in terminal:
-import code
-code.interact(local=dict(globals(), **locals()))
 
 
 image_file = '/home/java/Java/data/cgras_20230421/train/images/00_20230116_MIS1_RC_Aspat_T04_08.jpg'
@@ -141,6 +134,10 @@ if ultralitics_version: #ultralytics code
         ### 9 0.207813 0.368893 0.20625 0.371234 0.20625 0.392305 0.207813 0.394646 0.215625 0.394646 0.217187 0.392305 0.217187 0.389963 0.220313 0.385281 0.221875 0.385281 0.223438 0.38294 0.223438 0.371234 0.221875 0.368893 0.971601
     import code
     code.interact(local=dict(globals(), **locals()))
+
+# for interactive debugger in terminal:
+import code
+code.interact(local=dict(globals(), **locals()))
 
 #not working old code (08/11/2023) that trys to use the mask aspect of the mask. Mask are vertically shifted 
 def save_image_predictions_mask_old(results, image, imgname, save_path, class_list, classes, class_colours, ground_truth, txt):

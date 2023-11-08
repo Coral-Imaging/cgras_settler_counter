@@ -15,7 +15,7 @@ import zipfile
 from Utils import classes, poly_2_rle
 
 class Detect2Cvat:
-    BASE_FILE = "/home/java/Downloads/annotations.xml"
+    BASE_FILE = "/home/java/Java/Cgras/cgras_settler_counter/annotations.xml"
     OUTPUT_FILE = "/home/java/Downloads/complete.xml"
     DEFAULT_WEIGHT_FILE = "/home/java/Java/ultralytics/runs/segment/train4/weights/best.pt"
     
@@ -97,7 +97,7 @@ class Detect2Cvat:
 
 def main():
     print("Detecting corals and saving to annotation format.")
-    base_file = "/home/java/Downloads/annotations.xml"
+    base_file = "/home/java/Java/Cgras/cgras_settler_counter/annotations.xml"
     base_img_location = "/home/java/Java/data/cgras_20230421/train/images"
     output_filename = "/home/java/Downloads/complete.xml"
     weight_file = "/home/java/Java/ultralytics/runs/segment/train4/weights/best.pt"
