@@ -12,11 +12,11 @@ The following pipeline is designed to automate and streamline the Human-in-the-L
 4. The script will output a zipped *'completed.xml'* file. Upload this file to CVAT (using CVAT1.1 format). 
 NOTE: the current script outputs predictions into CVAT as polyshapes, but this can easily be changed to masks.
 
-## 2. Exporting annotated CVAT data
+## 2. Exporting annotated CVAT data and training a model
 **Prerequisite:** *Assuming the annotated data exits on CVAT as polygon shapes.*
 1. Export the job/task dataset in the COCO1.1 format
 2. To create the yolo labels run the `cvatcoco_to_yolo.py` script. Making sure to update the file location and names as nessary
 3. Manually split the image data into train, test and val folders. 
-4. Manually create a ``.yml` file specifing these locations, [cgrad_20230421.yml](https://github.com/Coral-Imaging/cgras_settler_counter/blob/main/segmenter/cgras_20230421.yaml) is an example of this.
+4. Manually create a `.yml` file specifing these locations, [cgrad_20230421.yml](https://github.com/Coral-Imaging/cgras_settler_counter/blob/main/segmenter/cgras_20230421.yaml) is an example of this.
 5. Run `train_segmenter.py` script making sure to update the yml file.
 
