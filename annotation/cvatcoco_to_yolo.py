@@ -12,8 +12,8 @@ save_dir = '/home/java/Java/data/new_data'
 download_dir = '/home/java/Downloads'
 split = False #got to get images in dir before split
 
-with zipfile.ZipFile(os.path.join('/home/java/Downloads', file_name), 'r') as zip_ref:
-   zip_ref.extractall('/home/java/Downloads')
+with zipfile.ZipFile(os.path.join(download_dir, file_name), 'r') as zip_ref:
+   zip_ref.extractall(download_dir)
     #annotation folder in downloads
 
 downloaded_labels_dir = os.path.join(download_dir, 'annotations')

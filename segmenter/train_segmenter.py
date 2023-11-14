@@ -12,7 +12,7 @@ data_file = '/home/java/Java/Cgras/cgras_settler_counter/segmenter/cgras_2023042
 
 # load model
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-model = YOLO('/home/java/Java/Cgras/cgras_settler_counter/yolov8x-seg.pt').to(device)
+model = YOLO('home/java/Downloads/yolov8n-seg.pt').to(device)
 
 # train model
 # for base training only want, 0: 'recruit_live_white', 1: 'recruit_cluster_live_white', 
@@ -20,7 +20,7 @@ model = YOLO('/home/java/Java/Cgras/cgras_settler_counter/yolov8x-seg.pt').to(de
 #model.train(data=data_file, epochs=200, batch=10)
 # classes arg is lightweight and simply ignore classes that are not included in the classes list, 
 # during train, val and predict, it has no effect on model architecture.
-model.train(data=data_file, epochs=300, batch=5, classes=[0,1,6,7,9,10])
+model.train(data=data_file, epochs=300, batch=1, classes=[0,1,6,7,9,10], imgsz=1280, nbs=12)
 
 # print('Model Inference:')
 # image_file = '/home/java/Java/data/cgras_20230421/train/images/00_20230116_MIS1_RC_Aspat_T04_08.jpg'
