@@ -14,13 +14,17 @@ from PIL import Image
 from Utils import classes, class_colours
 
 ultralitics_version = False #set to true, if want example of ultralitics prediction
-weights_file_path = '/home/java/Java/ultralytics/runs/segment/train4/weights/best.pt'
+weights_file_path = '/home/java/Java/ultralytics/runs/segment/train4/weights/best.pt' #trained on 640 imgsz
+#weights_file_path = '/home/java/Java/ultralytics/runs/segment/train5/weights/best.pt' #trained on 1280 imgsz
 save_dir = '/home/java/Java/data/cgras_20230421'
 img_folder = '/home/java/Java/data/cgras_20230421/train/images'
 txt_folder = '/home/java/Java/data/cgras_20230421/train/labels'
 
 #save txt results like they would be saved by ultralytics
 def save_txt_predictions_masks(results, conf, class_list, save_path):
+    """save_txt_predictions_masks
+    writes a textfile for the segmentation results, saving the data as ultralytics does
+    """
     masks = results[0].masks
     txt_results = []
     for i, r in enumerate(masks):
@@ -37,9 +41,16 @@ def save_txt_predictions_masks(results, conf, class_list, save_path):
             file.write('\n')
 
 def save_image_predictions_mask(results, image, imgname, save_path, class_list, classes, class_colours, ground_truth, txt):
+    """save_image_predictions_mask
+    saves the predicted masks results onto an image, recoring confidence and class as well. 
+    Can also show ground truth anotiations from the associated textfile (assumed annotiations are normalised xy corifinate points)
+    """
+    # ## to see image as 640 resolution
+    # image = cv.imread(imgname)
+    # image = cv.resize(image, (640, 488))
     height, width, _ = image.shape
     masked = image.copy()
-    line_tickness = int(round((height/width)*4))
+    line_tickness = int(round(width)/600)
     font_size = int(round(line_tickness/2))
     font_thickness = 3*(abs(line_tickness-font_size))+font_size
     for j, m in enumerate(results[0].masks):
@@ -79,7 +90,7 @@ def save_image_predictions_mask(results, image, imgname, save_path, class_list, 
     alpha = 0.5
     semi_transparent_mask = cv.addWeighted(image, 1-alpha, masked, alpha, 0)
     imgsavename = os.path.basename(imgname)
-    imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det.jpg')
+    imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det_s.jpg')
     cv.imwrite(imgsave_path, semi_transparent_mask)
 
     import code
@@ -102,7 +113,7 @@ for i, imgname in enumerate(imglist):
     if i >= 5: # for debugging purposes
         break
     image = cv.imread(imgname)
-    results = model.predict(source=imgname, iou=0.5, agnostic_nms=True)
+    results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
     conf, class_list = [], [], 
     for j, b in enumerate(results[0].boxes):
         conf.append(b.conf.item())
