@@ -73,9 +73,9 @@ def save_image_predictions_mask(results, image, imgname, save_path, class_list, 
         with open(txt, "r") as file:
             lines = file.readlines()
         for line in lines:
-                data = line.strip().split()
-                class_idx.append(int(data[0]))
-                points_normalised.append([float(val) for val in data[1:]])
+            data = line.strip().split()
+            class_idx.append(int(data[0]))
+            points_normalised.append([float(val) for val in data[1:]])
         for data in points_normalised:
             values = []
             for i in range(0, len(data), 2):
