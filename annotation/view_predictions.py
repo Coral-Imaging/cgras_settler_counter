@@ -14,11 +14,12 @@ from PIL import Image
 from Utils import classes, class_colours
 
 ultralitics_version = False #set to true, if want example of ultralitics prediction
-weights_file_path = '/home/java/Java/ultralytics/runs/segment/train4/weights/best.pt' #trained on 640 imgsz
+weights_file_path = '/home/java/Java/ultralytics/runs/segment/train6/weights/best.pt' #trained on tilled images
+#weights_file_path = '/home/java/Java/ultralytics/runs/segment/train4/weights/best.pt' #trained on 640 imgsz
 #weights_file_path = '/home/java/Java/ultralytics/runs/segment/train5/weights/best.pt' #trained on 1280 imgsz
-save_dir = '/home/java/Java/data/cgras_20230421'
-img_folder = '/home/java/Java/data/cgras_20230421/train/images'
-txt_folder = '/home/java/Java/data/cgras_20230421/train/labels'
+save_dir = '/home/java/Java/data/cgras_20230421/tilling'
+img_folder = os.path.join(save_dir, 'train', 'images')
+txt_folder = os.path.join(save_dir, 'train', 'labels')
 
 #save txt results like they would be saved by ultralytics
 def save_txt_predictions_masks(results, conf, class_list, save_path):
@@ -40,7 +41,7 @@ def save_txt_predictions_masks(results, conf, class_list, save_path):
                 file.write(str(item) + ' ')
             file.write('\n')
 
-def save_image_predictions_mask(results, image, imgname, save_path, class_list, classes, class_colours, ground_truth, txt):
+def save_image_predictions_mask(results, image, imgname, save_path, conf, class_list, classes, class_colours, ground_truth, txt):
     """save_image_predictions_mask
     saves the predicted masks results onto an image, recoring confidence and class as well. 
     Can also show ground truth anotiations from the associated textfile (assumed annotiations are normalised xy corifinate points)
@@ -51,22 +52,25 @@ def save_image_predictions_mask(results, image, imgname, save_path, class_list, 
     height, width, _ = image.shape
     masked = image.copy()
     line_tickness = int(round(width)/600)
-    font_size = int(round(line_tickness/2))
-    font_thickness = 3*(abs(line_tickness-font_size))+font_size
-    for j, m in enumerate(results[0].masks):
-        xyn = np.array(m.xyn)
-        xyn[0, :, 0] = (xyn[0, :, 0] * width)
-        xyn[0, :, 1] = (xyn[0, :, 1] * height)
-        points = xyn.reshape((-1, 1, 2)).astype(np.int32)
-        cls = classes[int(class_list[j])]
-        desired_color = class_colours[cls]
-        if points is None or not points.any() or len(points) == 0:
-            print(f'mask {j} encountered problem with points {points}, class is {cls}')
-        else: 
-            cv.fillPoly(masked, [points], desired_color)
-            xmin = min(xyn[0, :, 0])
-            ymin = min(xyn[0, :, 1])
-            cv.putText(image, f"{cls}: {conf[j]:.2f}", (int(xmin-20), int(ymin - 5)), cv.FONT_HERSHEY_SIMPLEX, font_size, desired_color, font_thickness)
+    font_size = 1#int(round(line_tickness/2))
+    font_thickness = 1#3*(abs(line_tickness-font_size))+font_size
+    if results and results[0].masks:
+        for j, m in enumerate(results[0].masks):
+            xyn = np.array(m.xyn)
+            xyn[0, :, 0] = (xyn[0, :, 0] * width)
+            xyn[0, :, 1] = (xyn[0, :, 1] * height)
+            points = xyn.reshape((-1, 1, 2)).astype(np.int32)
+            cls = classes[int(class_list[j])]
+            desired_color = class_colours[cls]
+            if points is None or not points.any() or len(points) == 0:
+                print(f'mask {j} encountered problem with points {points}, class is {cls}')
+            else: 
+                cv.fillPoly(masked, [points], desired_color)
+                xmin = min(xyn[0, :, 0])
+                ymin = min(xyn[0, :, 1])
+                cv.putText(image, f"{conf[j]:.2f}: {cls}", (int(xmin-20), int(ymin - 5)), cv.FONT_HERSHEY_SIMPLEX, font_size, desired_color, font_thickness)
+    else:
+        print(f'No masks found in {imgname}')
     
     if ground_truth:
         points_normalised, points, class_idx = [], [], []
@@ -78,11 +82,15 @@ def save_image_predictions_mask(results, image, imgname, save_path, class_list, 
             points_normalised.append([float(val) for val in data[1:]])
         for data in points_normalised:
             values = []
-            for i in range(0, len(data), 2):
-                x = round(data[i]*width)
-                y = round(data[i+1]*height)
-                values.extend([x,y])
-            points.append(values)
+            try:
+                for i in range(0, len(data), 2):
+                    x = round(data[i]*width)
+                    y = round(data[i+1]*height)
+                    values.extend([x,y])
+                points.append(values)
+            except:
+                points.append(values)
+                print(f'invalid line there is {len(data)} data, related to img {imgname}')
         for idx in range(len(class_idx)):
             pointers = np.array(points[idx], np.int32).reshape(-1,2)
             cv.polylines(image, [pointers], True, class_colours[classes[class_idx[idx]]], line_tickness)
@@ -93,14 +101,15 @@ def save_image_predictions_mask(results, image, imgname, save_path, class_list, 
     imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det_s.jpg')
     cv.imwrite(imgsave_path, semi_transparent_mask)
 
-    import code
-    code.interact(local=dict(globals(), **locals()))
+    # import code
+    # code.interact(local=dict(globals(), **locals()))
 
 # load model
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 model = YOLO(weights_file_path).to(device)
 
-
+import code
+code.interact(local=dict(globals(), **locals()))
 # get predictions
 print('Model Inference:')
 
@@ -110,23 +119,26 @@ imgsave_dir = os.path.join(save_dir, 'detections', 'detections_images')
 os.makedirs(imgsave_dir, exist_ok=True)
 for i, imgname in enumerate(imglist):
     print(f'predictions on {i+1}/{len(imglist)}')
-    if i >= 5: # for debugging purposes
-        break
+    # if i >= 509: # for debugging purposes
+        # break 
+        # import code
+        # code.interact(local=dict(globals(), **locals()))
     image = cv.imread(imgname)
     results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
-    conf, class_list = [], [], 
+    conf, class_list = [], [] 
     for j, b in enumerate(results[0].boxes):
         conf.append(b.conf.item())
         class_list.append(b.cls.item())
-    imgsavename = os.path.basename(imgname)
     
     txt = txtlist[i]
     ground_truth = True
-    save_image_predictions_mask(results, image, imgname, imgsave_dir, class_list, classes, class_colours, ground_truth, txt)
+    save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours, ground_truth, txt)
 
 
-image_file = '/home/java/Java/data/cgras_20230421/train/images/00_20230116_MIS1_RC_Aspat_T04_08.jpg'
+
+
 if ultralitics_version: #ultralytics code
+    image_file = '/home/java/Java/data/cgras_20230421/train/images/00_20230116_MIS1_RC_Aspat_T04_08.jpg'
     image = cv.imread(image_file)
     results = model.predict(source=image_file, iou=0.5, agnostic_nms=True)
     conf = []
@@ -147,6 +159,7 @@ if ultralitics_version: #ultralytics code
     code.interact(local=dict(globals(), **locals()))
 
 # for interactive debugger in terminal:
+print("done")
 import code
 code.interact(local=dict(globals(), **locals()))
 

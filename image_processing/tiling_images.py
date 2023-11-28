@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 """ tiling_images.py
-script created to til big images into smaller ones with annotations that can then be trained on via a yolo model
+script created to tile big images into smaller ones with annotations that can then be trained on via a yolo model
 """
 
 import os
