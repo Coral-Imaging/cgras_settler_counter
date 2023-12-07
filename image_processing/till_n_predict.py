@@ -43,7 +43,7 @@ class_colours = {classes[0]: blue,
 
 TILE_WIDTH= 640
 TILE_HEIGHT = 640
-TRUNCATE_PERCENT = 0.1
+TRUNCATE_PERCENT = 0.5
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
 
 #full_res_dir = '/home/java/Java/data/cgras_20231028'
@@ -140,7 +140,7 @@ def stich(obj_list, img_name, save_path):
     imgsavename = os.path.basename(img_name)
     imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det.jpg')
     cv.imwrite(imgsave_path, semi_transparent_mask)
-    print("saved img")
+    print(f'saved img at {imgsave_path}')
 
 # load model
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
