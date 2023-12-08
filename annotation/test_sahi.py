@@ -28,43 +28,50 @@ import glob
 # then convert to yolo version for future use
 #################################################################################
 
-# image_file = '/home/java/Java/data/cgras_20230421/train/images/00_20230116_MIS1_RC_Aspat_T04_08.jpg'
-# output_path = '/home/java/Java/data/cgras_20230421/sahi'
-# coco_ann_file_path = '/home/java/Java/data/cgras_20230421/coco/annotations/instances_default.json'
-# yolo_save = os.path.join(output_path, 'train')
+output_path = '/home/java/Java/data/cgras_20230421/sahi'
+coco_ann_file = '/home/java/Java/data/cgras_20230421/coco/annotations/instances_default.json'
+coco_ann_save_name = 'test'
 
-# coco_dict, coco_path = slice_coco(
-#     coco_annotation_file_path=coco_ann_file_path,
-#     image_dir='/home/java/Java/data/cgras_20230421/train/images',
-#     output_coco_annotation_file_name='test',
-#     output_dir=output_path,
-#     slice_height=10000,
-#     slice_width=10000,
-#     overlap_height_ratio=0.2,
-#     overlap_width_ratio=0.2,
-#     min_area_ratio=0.1,
-#     ignore_negative_samples=True
-# )
+yolo_save = os.path.join(output_path, 'train')
 
-# convert_coco(labels_dir=output_path, save_dir=yolo_save,
-#                  use_segments=True, use_keypoints=False, cls91to80=False)
+coco_dict, coco_path = slice_coco(
+    coco_annotation_file_path=coco_ann_file,
+    image_dir='/home/java/Java/data/cgras_20230421/train/images',
+    output_coco_annotation_file_name=coco_ann_save_name,
+    output_dir=output_path,
+    slice_height=640,
+    slice_width=640,
+    overlap_height_ratio=0.2,
+    overlap_width_ratio=0.2,
+    min_area_ratio=0.1,
+    ignore_negative_samples=True
+)
+print("done cutting")
 
-# lable_dir = os.path.join(yolo_save, 'labels')
-# coco_labels = os.path.join(lable_dir, 'test_coco')
-# for filename in os.listdir(coco_labels):
-#     source = os.path.join(coco_labels, filename)
-#     destination = os.path.join(lable_dir, filename)
-#     if os.path.isfile(source):
-#         shutil.move(source, destination)
+import code
+code.interact(local=dict(globals(), **locals()))
 
-# for filename in os.listdir(output_path):
-#     source = os.path.join(output_path, filename)
-#     destination = os.path.join(yolo_save, filename)
-#     if os.path.isfile(source):
-#         shutil.move(source, destination)
+convert_coco(labels_dir=output_path, save_dir=yolo_save,
+                 use_segments=True, use_keypoints=False, cls91to80=False)
 
-# import code
-# code.interact(local=dict(globals(), **locals()))
+lable_dir = os.path.join(yolo_save, 'labels')
+coco_labels = os.path.join(lable_dir, coco_ann_save_name+'_coco')
+for filename in os.listdir(coco_labels):
+    source = os.path.join(coco_labels, filename)
+    destination = os.path.join(lable_dir, filename)
+    if os.path.isfile(source):
+        shutil.move(source, destination)
+
+for filename in os.listdir(output_path):
+    source = os.path.join(output_path, filename)
+    destination = os.path.join(yolo_save, 'images', filename)
+    if os.path.isfile(source):
+        shutil.move(source, destination)
+
+print("files in yolo format and directory")
+
+import code
+code.interact(local=dict(globals(), **locals()))
 
 ################## Detection code ##############################
 
