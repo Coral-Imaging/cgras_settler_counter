@@ -103,6 +103,18 @@ def find_objects(img_name, obj_list):
                 obj_list.append(polygons)  
     return obj_list  
 
+def merge_adjacent_polygons(polygons):
+    ##currently puts the labels out of line, don't think this is actually working
+    merged_polygons = []
+    while polygons:
+        current_polygon = polygons.pop(0)
+        neighbors = [poly for poly in polygons if current_polygon.distance(poly) <= 20]
+        for neighbor in neighbors:
+            current_polygon = current_polygon.union(neighbor)
+            polygons.remove(neighbor)
+        merged_polygons.append(current_polygon)
+    return merged_polygons
+
 def stich(obj_list, img_name, save_path):
     """Displays the detected object onto the image"""
     image = cv.imread(img_name)
@@ -123,7 +135,15 @@ def stich(obj_list, img_name, save_path):
                 polygons.append(obj[0])
                 conf.append(obj[1])
                 cls.append(obj[2])
-    for i, polygon in enumerate(polygons):
+    combined_poly = merge_adjacent_polygons(polygons)
+    sorted_poly = []
+    for polygon in combined_poly:
+        if isinstance(polygon, (MultiPolygon, GeometryCollection)):
+            for p in polygon.geoms:
+                sorted_poly.append(p)
+        else:
+            sorted_poly.append(polygon)
+    for i, polygon in enumerate(sorted_poly):
         xy = polygon.exterior.coords.xy
         xy_int = np.array(xy, np.int32)
         current_cls = classes[int(cls[i])]
