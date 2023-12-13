@@ -28,52 +28,53 @@ import glob
 # then convert to yolo version for future use
 #################################################################################
 
-output_path = '/home/java/Java/data/cgras_20230421/sahi'
-coco_ann_file = '/home/java/Java/data/cgras_20230421/coco/annotations/instances_default.json'
-coco_ann_save_name = 'test'
+# output_path = '/home/java/Java/data/cgras_20230421/sahi'
+# coco_ann_file = '/home/java/Java/data/cgras_20230421/coco/annotations/instances_default.json'
+# coco_ann_save_name = 'test'
 
-yolo_save = os.path.join(output_path, 'train')
+# yolo_save = os.path.join(output_path, 'train')
 
-coco_dict, coco_path = slice_coco(
-    coco_annotation_file_path=coco_ann_file,
-    image_dir='/home/java/Java/data/cgras_20230421/train/images',
-    output_coco_annotation_file_name=coco_ann_save_name,
-    output_dir=output_path,
-    slice_height=640,
-    slice_width=640,
-    overlap_height_ratio=0.2,
-    overlap_width_ratio=0.2,
-    min_area_ratio=0.1,
-    ignore_negative_samples=True
-)
-print("done cutting")
+# coco_dict, coco_path = slice_coco(
+#     coco_annotation_file_path=coco_ann_file,
+#     image_dir='/home/java/Java/data/cgras_20230421/train/images',
+#     output_coco_annotation_file_name=coco_ann_save_name,
+#     output_dir=output_path,
+#     slice_height=640,
+#     slice_width=640,
+#     overlap_height_ratio=0.2,
+#     overlap_width_ratio=0.2,
+#     min_area_ratio=0.1,
+#     ignore_negative_samples=True
+# )
+# print("done cutting")
 
-import code
-code.interact(local=dict(globals(), **locals()))
+# import code
+# code.interact(local=dict(globals(), **locals()))
 
-convert_coco(labels_dir=output_path, save_dir=yolo_save,
-                 use_segments=True, use_keypoints=False, cls91to80=False)
+# convert_coco(labels_dir=output_path, save_dir=yolo_save,
+#                  use_segments=True, use_keypoints=False, cls91to80=False)
 
-lable_dir = os.path.join(yolo_save, 'labels')
-coco_labels = os.path.join(lable_dir, coco_ann_save_name+'_coco')
-for filename in os.listdir(coco_labels):
-    source = os.path.join(coco_labels, filename)
-    destination = os.path.join(lable_dir, filename)
-    if os.path.isfile(source):
-        shutil.move(source, destination)
+# lable_dir = os.path.join(yolo_save, 'labels')
+# coco_labels = os.path.join(lable_dir, coco_ann_save_name+'_coco')
+# for filename in os.listdir(coco_labels):
+#     source = os.path.join(coco_labels, filename)
+#     destination = os.path.join(lable_dir, filename)
+#     if os.path.isfile(source):
+#         shutil.move(source, destination)
 
-for filename in os.listdir(output_path):
-    source = os.path.join(output_path, filename)
-    destination = os.path.join(yolo_save, 'images', filename)
-    if os.path.isfile(source):
-        shutil.move(source, destination)
+# for filename in os.listdir(output_path):
+#     source = os.path.join(output_path, filename)
+#     destination = os.path.join(yolo_save, 'images', filename)
+#     if os.path.isfile(source):
+#         shutil.move(source, destination)
 
-print("files in yolo format and directory")
+# print("files in yolo format and directory")
 
-import code
-code.interact(local=dict(globals(), **locals()))
+# import code
+# code.interact(local=dict(globals(), **locals()))
 
 ################## Detection code ##############################
+print("running detection code")
 
 def save_image_predictions_bb(predictions, imgname, imgsavedir, class_colours, classes):
     """
@@ -111,7 +112,7 @@ detection_model = AutoDetectionModel.from_pretrained(
     model_path=yolov8_model_path,
     mask_threshold=0.3,
     confidence_threshold=0.3,
-    device="cpu",  # or 'cuda:0'
+    device="cuda:0" # or "cpu" 
 )
 
 image_file_list = sorted(glob.glob(os.path.join('/home/java/Java/data/cgras_20230421/train/images', '*.jpg')))
@@ -136,11 +137,11 @@ for i, image_file in enumerate(image_file_list):
         predictions.append([x1n, y1n, x2n, y2n, conf, cls])
     save_image_predictions_bb(predictions, image_file, export_dir, class_colours, classes)
 
+    # import code
+    # code.interact(local=dict(globals(), **locals()))
 
-    #import code
-    #code.interact(local=dict(globals(), **locals()))
-
-    ##Sliced inference - working but has lots of FP
+    ##Sliced inference - 
+    # working but has lots of False positives that are small boxes around random stuff
     result = get_sliced_prediction(
         image_file,
         detection_model,
@@ -160,9 +161,23 @@ for i, image_file in enumerate(image_file_list):
         x1n, y1n, x2n, y2n = x1/imgw, y1/imgh, x2/imgw, y2/imgh
         predictions.append([x1n, y1n, x2n, y2n, conf, cls])
 
-    result.export_visuals(export_dir=export_dir)
-
+    # import code
+    # code.interact(local=dict(globals(), **locals()))
     save_image_predictions_bb(predictions, image_file, export_dir, class_colours, classes)
+
+    ##saves the image using sahi / yolo visualisation results, will have the same detections as above
+    img_converted = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+    numpydata = asarray(img_converted)
+    visualize_object_predictions(
+        numpydata, 
+        object_prediction_list = result.object_prediction_list,
+        hide_labels = 1, 
+        output_dir=export_dir,
+        file_name = 'vis_result',
+        export_format = 'png'
+    )
+    #does the same as visualise_object_predictions
+    result.export_visuals(export_dir=export_dir) #
 
 import code
 code.interact(local=dict(globals(), **locals()))

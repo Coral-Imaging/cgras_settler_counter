@@ -17,7 +17,7 @@ from ultralytics import YOLO
 
 
 classes = ["recruit_live_white", "recruit_cluster_live_white", "recruit_symbiotic", "recruit_symbiotic_cluster", "recruit_partial",
-           "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown"]
+           "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown", "combined"]
 orange = [255, 128, 0] 
 blue = [0, 212, 255] 
 purple = [170, 0, 255] 
@@ -39,12 +39,14 @@ class_colours = {classes[0]: blue,
                 classes[7]: red,
                 classes[8]: dark_purple,
                 classes[9]: light_grey,
-                classes[10]: dark_green}
+                classes[10]: dark_green,
+                classes[11]: brown}
 
 TILE_WIDTH= 640
 TILE_HEIGHT = 640
 TRUNCATE_PERCENT = 0.5
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
+OBJ_DISTANCE = 10
 
 #full_res_dir = '/home/java/Java/data/cgras_20231028'
 full_res_dir = '/home/java/Java/data/cgras_20230421/train'
@@ -103,27 +105,8 @@ def find_objects(img_name, obj_list):
                 obj_list.append(polygons)  
     return obj_list  
 
-def merge_adjacent_polygons(polygons):
-    ##currently puts the labels out of line, don't think this is actually working
-    merged_polygons = []
-    while polygons:
-        current_polygon = polygons.pop(0)
-        neighbors = [poly for poly in polygons if current_polygon.distance(poly) <= 20]
-        for neighbor in neighbors:
-            current_polygon = current_polygon.union(neighbor)
-            polygons.remove(neighbor)
-        merged_polygons.append(current_polygon)
-    return merged_polygons
-
-def stich(obj_list, img_name, save_path):
-    """Displays the detected object onto the image"""
-    image = cv.imread(img_name)
-    height, width, _ = image.shape
-    masked = image.copy()
-    line_tickness = int(round(width)/600)
-    font_size = int(round(line_tickness/10))
-    font_thickness = int((abs(line_tickness-font_size))/3)
-
+def split_detection_object(obj_list):
+    """Takes discovered objects, splits the classification and confidence from the polygon"""
     polygons, conf, cls = [], [], []
     for objs in obj_list:
         if len(objs) == 1:
@@ -135,15 +118,55 @@ def stich(obj_list, img_name, save_path):
                 polygons.append(obj[0])
                 conf.append(obj[1])
                 cls.append(obj[2])
-    combined_poly = merge_adjacent_polygons(polygons)
-    sorted_poly = []
-    for polygon in combined_poly:
-        if isinstance(polygon, (MultiPolygon, GeometryCollection)):
-            for p in polygon.geoms:
-                sorted_poly.append(p)
+    return polygons, conf, cls
+
+def handle_detection_object(obj_list):
+    #merges polygons that are close together and returns all detections in a format that can be visualised
+    #TODO work out if better way to merge conf and cls. (currently picking the section with the highest conf)??
+    all_polygons = []
+    polygons, conf, cls = split_detection_object(obj_list)
+
+    while polygons:
+        current_polygon = polygons.pop(0)
+        current_conf = conf.pop(0)
+        current_cls = cls.pop(0)
+        neighbors = [
+            (poly, neighbor_conf, neighbor_cls)
+            for poly, neighbor_conf, neighbor_cls in zip(polygons, conf, cls)
+            if current_polygon.distance(poly) <= OBJ_DISTANCE
+        ]
+        if neighbors:
+            for neighbor, neighbor_conf, neighbor_cls in neighbors:
+                current_polygon = current_polygon.union(neighbor).convex_hull
+                polygon_index = polygons.index(neighbor)
+                polygons.pop(polygon_index)
+                conf.pop(polygon_index)
+                cls.pop(polygon_index)
+                print(f'neighbor conf {neighbor_conf:.2f}, current conf {current_conf:.2f}')
+                print(f'neighbor class {classes[int(neighbor_cls)]}, current class {classes[int(current_cls)]}')
+                if neighbor_conf > current_conf:
+                    current_conf = neighbor_conf
+                    current_cls = neighbor_cls
+                #current_cls = 11 #to visualise what objects are combined
+            all_polygons.append((current_polygon, current_conf, current_cls))
         else:
-            sorted_poly.append(polygon)
-    for i, polygon in enumerate(sorted_poly):
+            all_polygons.append((current_polygon, current_conf, current_cls))
+    polygons, conf, cls = zip(*all_polygons)
+    return polygons, conf, cls
+
+def stich(obj_list, img_name, save_path):
+    """Displays the detected objects onto the image"""
+    image = cv.imread(img_name)
+    height, width, _ = image.shape
+    masked = image.copy()
+    line_tickness = int(round(width)/600)
+    font_size = int(round(line_tickness/10))
+    font_thickness = int((abs(line_tickness-font_size))/3)
+
+    polygons, conf, cls = handle_detection_object(obj_list)
+
+    #draw / visualise the polygons
+    for i, polygon in enumerate(polygons):
         xy = polygon.exterior.coords.xy
         xy_int = np.array(xy, np.int32)
         current_cls = classes[int(cls[i])]
@@ -154,11 +177,10 @@ def stich(obj_list, img_name, save_path):
         ymin = min(xy[1])
         cv.putText(image, f"{conf[i]:.2f}: {current_cls}", (int(xmin-20), int(ymin - 5)), cv.FONT_HERSHEY_SIMPLEX, font_size, desired_color, font_thickness)
 
-
     alpha = 0.5
     semi_transparent_mask = cv.addWeighted(image, 1-alpha, masked, alpha, 0)
     imgsavename = os.path.basename(img_name)
-    imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det.jpg')
+    imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det_merged.jpg')
     cv.imwrite(imgsave_path, semi_transparent_mask)
     print(f'saved img at {imgsave_path}')
 
@@ -167,7 +189,8 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 model = YOLO(weights_file_path).to(device)
 
 ######### With one image #############
-test_name = '00_20230116_MIS1_RC_Aspat_T04_08'
+#test_name = '00_20230116_MIS1_RC_Aspat_T04_08'
+test_name = '03_775_20211213_108'
 img_name = os.path.join(full_res_dir,'images', test_name+'.jpg')
 obj_list = []
 obj_list = find_objects(img_name, obj_list)
