@@ -48,6 +48,82 @@ def rle_to_binary_mask(rle_list,
 
     return mask
 
+def maskxml_to_polyxml(source_file: str,
+                       output_filename: str):
+    '''NOT TESTED!!!   maskxml_to_polyxml
+    Converts a cvat1.1 source file annotation with masks to an cvat1.1 outputfile with annontations as polygons.
+    NOTE: '.xml' must be included in both source_file and output_filename
+
+    Args:
+        source_file (str): name of source file with annontations
+        output_filename (str): name of output file to save to.
+    '''
+    # load XML file with the polygons via a tree
+    tree = ET.parse(source_file)
+    root = tree.getroot() 
+    new_tree = ElementTree(Element("annotations"))
+
+    # add version element
+    version_element = ET.Element('version')
+    version_element.text = '1.1'
+    new_tree.getroot().append(version_element)
+
+    # add Meta elements, (copy over from source_file)
+    meta_element = root.find('.//meta')
+    if meta_element is not None:
+        new_meta_elem = ET.SubElement(new_tree.getroot(), 'meta')
+        # copy all subelements of meta
+        for sub_element in meta_element:
+            new_meta_elem.append(sub_element)
+
+    # iterate through image elements
+    i = 0
+    for image_element in root.findall('.//image'):
+        i += 1
+        print(i,'images being processed')
+        image_id = image_element.get('id')
+        image_name = image_element.get('name')
+        image_width = int(image_element.get('width'))
+        image_height = int(image_element.get('height'))
+
+        # create new image element in new XML
+        new_elem = SubElement(new_tree.getroot(), 'image')
+        new_elem.set('id', image_id)
+        new_elem.set('name', image_name)
+        new_elem.set('width', str(image_width))
+        new_elem.set('height', str(image_height))
+
+        # acess mask annotations in the image
+        for mask_ele in image_element.findall('mask'):
+            mask_rle = mask_ele.get('rle')
+            mask_width = mask_ele.get('width')
+            mask_height = mask_ele.get('height')
+            # rle into list 
+            rle_list = list(map(int, mask_rle.split(',')))
+            # convert the rle into mask
+            mask = rle_to_binary_mask(rle_list, int(mask_width), int(mask_height), SHOW_IMAGE=False)
+            # convert the mask into polygon
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # convert the polygon into points
+            points = np.squeeze(contours[0])
+            # convert the points into string
+            points_string = ';'.join(','.join(str(point) for point in points))
+            #XML polygon element details
+            poly_elem = SubElement(new_elem, 'polygon')
+            poly_elem.set('label', mask_ele.get('label'))
+            poly_elem.set('points', points_string)
+            poly_elem.set('z_order', mask_ele.get('z_order'))
+        print(len(image_element.findall('mask')),'masks converted into polygons',image_name)
+        
+    new_tree.write(output_filename, encoding='utf-8', xml_declaration=True)
+
+    #Zip the file
+    zip_filename = output_filename.split('.')[0] + '.zip'
+    with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        zipf.write(output_filename, arcname='output_xml_file.xml')
+    print('XML file zipped')
+
+
 def polyxml_to_maskxml(source_file: str, 
                        output_filename: str, 
                        SHOW_IMAGE: bool):
@@ -123,8 +199,21 @@ def polyxml_to_maskxml(source_file: str,
             mask_elem.set('width', str(width))
             mask_elem.set('height', str(height))
             mask_elem.set('z_order', polygon_z_order)
-
         print(len(image_element.findall('polygon')),'polgons converted in image',image_name)
+        #copy over any mask elements
+        for o_mask_ele in image_element.findall('mask'):
+            c_mask_elem = SubElement(new_elem, 'mask')
+            c_mask_elem.set('label', o_mask_ele.get('label'))
+            c_mask_elem.set('source', 'semi-auto')
+            c_mask_elem.set('occluded', '0')
+            c_mask_elem.set('rle', o_mask_ele.get('rle'))
+            c_mask_elem.set('left', o_mask_ele.get('left'))
+            c_mask_elem.set('top', o_mask_ele.get('top'))
+            c_mask_elem.set('width', o_mask_ele.get('width'))
+            c_mask_elem.set('height', o_mask_ele.get('height'))
+            c_mask_elem.set('z_order', o_mask_ele.get('z_order'))
+        print(len(image_element.findall('mask')),'masks kept in image',image_name)
+        
 
     # Write modified XML to output file
     new_tree.write(output_filename, encoding='utf-8', xml_declaration=True)
@@ -161,7 +250,7 @@ def test_rle_to_mask(source_file: str):
 #test_rle_to_mask(source_file='masks.xml')
 
 def main():
-   polyxml_to_maskxml(source_file='annotations.xml', output_filename='complete.xml', SHOW_IMAGE=False)
+   polyxml_to_maskxml(source_file='/home/java/Downloads/cgras_20231028/annotations.xml', output_filename='cgras_20231028_masks.xml', SHOW_IMAGE=False)
 
 if __name__ == "__main__":
     main()

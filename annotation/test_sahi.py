@@ -21,6 +21,10 @@ from sahi.slicing import slice_coco
 from ultralytics.data.converter import convert_coco
 import shutil
 import glob
+from Utils import classes, poly_2_rle
+import xml.etree.ElementTree as ET
+from xml.etree.ElementTree import Element, SubElement, ElementTree
+import zipfile
 
 ######################## spliting images ########################################
 # Download annotations from cvat using coco fromat (cvat should have images in polygons)
@@ -102,7 +106,7 @@ def save_image_predictions_bb(predictions, imgname, imgsavedir, class_colours, c
     return True
 
 # Download YOLOv8 model
-yolov8_model_path = '/home/java/Java/ultralytics/runs/segment/train4/weights/best.pt' #trained on 640 imgsz
+yolov8_model_path = '/home/java/Java/ultralytics/runs/segment/train6/weights/best.pt' #trained on tilled images
 #yolov8_model_path = '/home/java/Java/ultralytics/runs/segment/train5/weights/best.pt' #trained on 1280 imgsz
 export_dir="/home/java/Java/data/cgras_20230421/sahi"
 download_yolov8s_model(yolov8_model_path)
@@ -116,70 +120,149 @@ detection_model = AutoDetectionModel.from_pretrained(
 )
 
 image_file_list = sorted(glob.glob(os.path.join('/home/java/Java/data/cgras_20230421/train/images', '*.jpg')))
+## testing and playing with functions
+def detection_test(image_file_list, export_dir, detection_model):
+    for i, image_file in enumerate(image_file_list):
+        if i>10:
+            break
+        img = cv.imread(image_file)
+        imgw, imgh = img.shape[1], img.shape[0] 
 
-for i, image_file in enumerate(image_file_list):
-    if i>10:
-        break
-    img = cv.imread(image_file)
-    imgw, imgh = img.shape[1], img.shape[0] 
+        ##Prediction - working
+        result = get_prediction(image_file, detection_model)
+        result.export_visuals(export_dir=export_dir)
+        object_prediction_list = result.object_prediction_list
+        predictions = []
+        for obj in object_prediction_list:
+            cls = obj.category.id
+            conf = obj.score.value
+            bb = obj.bbox
+            x1, y1, x2, y2 = bb.minx, bb.miny, bb.maxx, bb.maxy
+            x1n, y1n, x2n, y2n = x1/imgw, y1/imgh, x2/imgw, y2/imgh
+            predictions.append([x1n, y1n, x2n, y2n, conf, cls])
+        save_image_predictions_bb(predictions, image_file, export_dir, class_colours, classes)
 
-    ##Prediction - working
-    result = get_prediction(image_file, detection_model)
-    result.export_visuals(export_dir=export_dir)
-    object_prediction_list = result.object_prediction_list
-    predictions = []
-    for obj in object_prediction_list:
-        cls = obj.category.id
-        conf = obj.score.value
-        bb = obj.bbox
-        x1, y1, x2, y2 = bb.minx, bb.miny, bb.maxx, bb.maxy
-        x1n, y1n, x2n, y2n = x1/imgw, y1/imgh, x2/imgw, y2/imgh
-        predictions.append([x1n, y1n, x2n, y2n, conf, cls])
-    save_image_predictions_bb(predictions, image_file, export_dir, class_colours, classes)
+        # import code
+        # code.interact(local=dict(globals(), **locals()))
 
-    # import code
-    # code.interact(local=dict(globals(), **locals()))
+        ##Sliced inference - 
+        # working but has lots of False positives that are small boxes around random stuff
+        result = get_sliced_prediction(
+            image_file,
+            detection_model,
+            slice_height=640,
+            slice_width=640,
+            overlap_height_ratio=0.1,
+            overlap_width_ratio=0.1
+        )
 
-    ##Sliced inference - 
-    # working but has lots of False positives that are small boxes around random stuff
-    result = get_sliced_prediction(
-        image_file,
-        detection_model,
-        slice_height=640,
-        slice_width=640,
-        overlap_height_ratio=0.1,
-        overlap_width_ratio=0.1
-    )
+        object_prediction_list = result.object_prediction_list
+        predictions = []
+        for obj in object_prediction_list:
+            cls = obj.category.id
+            conf = obj.score.value
+            bb = obj.bbox
+            x1, y1, x2, y2 = bb.minx, bb.miny, bb.maxx, bb.maxy
+            x1n, y1n, x2n, y2n = x1/imgw, y1/imgh, x2/imgw, y2/imgh
+            predictions.append([x1n, y1n, x2n, y2n, conf, cls])
 
-    object_prediction_list = result.object_prediction_list
-    predictions = []
-    for obj in object_prediction_list:
-        cls = obj.category.id
-        conf = obj.score.value
-        bb = obj.bbox
-        x1, y1, x2, y2 = bb.minx, bb.miny, bb.maxx, bb.maxy
-        x1n, y1n, x2n, y2n = x1/imgw, y1/imgh, x2/imgw, y2/imgh
-        predictions.append([x1n, y1n, x2n, y2n, conf, cls])
+        # import code
+        # code.interact(local=dict(globals(), **locals()))
+        save_image_predictions_bb(predictions, image_file, export_dir, class_colours, classes)
 
-    # import code
-    # code.interact(local=dict(globals(), **locals()))
-    save_image_predictions_bb(predictions, image_file, export_dir, class_colours, classes)
+        ##saves the image using sahi / yolo visualisation results, will have the same detections as above
+        img_converted = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+        numpydata = asarray(img_converted)
+        visualize_object_predictions(
+            numpydata, 
+            object_prediction_list = result.object_prediction_list,
+            hide_labels = 1, 
+            output_dir=export_dir,
+            file_name = 'vis_result',
+            export_format = 'png'
+        )
+        #does the same as visualise_object_predictions
+        result.export_visuals(export_dir=export_dir) #
 
-    ##saves the image using sahi / yolo visualisation results, will have the same detections as above
-    img_converted = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-    numpydata = asarray(img_converted)
-    visualize_object_predictions(
-        numpydata, 
-        object_prediction_list = result.object_prediction_list,
-        hide_labels = 1, 
-        output_dir=export_dir,
-        file_name = 'vis_result',
-        export_format = 'png'
-    )
-    #does the same as visualise_object_predictions
-    result.export_visuals(export_dir=export_dir) #
+# detection_test(image_file_list, export_dir, detection_model)
+# import code
+# code.interact(local=dict(globals(), **locals()))
 
-import code
-code.interact(local=dict(globals(), **locals()))
+############## Pretend human in the loop ##############
+print("pretend human in the loop")
+#folder of new images
+img_location = os.path.join('/home/java/Java/data/cgras_20230421/train','images')
+#images were in cvat and then downloaded in CVAT format
+base_ann_file = "/home/java/Downloads/dec14/annotations.xml"
+output_file = "/home/java/Downloads/dec14_box.xml"
 
+tree = ET.parse(base_ann_file)
+root = tree.getroot() 
+new_tree = ElementTree(Element("annotations"))
+# add version element
+version_element = ET.Element('version')
+version_element.text = '1.1'
+new_tree.getroot().append(version_element)
+# add Meta elements, (copy over from source_file)
+meta_element = root.find('.//meta')
+if meta_element is not None:
+    new_meta_elem = ET.SubElement(new_tree.getroot(), 'meta')
+    # copy all subelements of meta
+for sub_element in meta_element:
+    new_meta_elem.append(sub_element)
+    for i, image_element in enumerate(root.findall('.//image')):
+        print(i,'images being processed')
+        image_id = image_element.get('id')
+        image_name = image_element.get('name')
+        image_width = int(image_element.get('width'))
+        image_height = int(image_element.get('height'))
 
+        # create new image element in new XML
+        new_elem = SubElement(new_tree.getroot(), 'image')
+        new_elem.set('id', image_id)
+        new_elem.set('name', image_name)
+        new_elem.set('width', str(image_width))
+        new_elem.set('height', str(image_height))
+
+        image_file = os.path.join(img_location, image_name)
+        result = get_sliced_prediction(
+            image_file,
+            detection_model,
+            slice_height=640,
+            slice_width=640,
+            overlap_height_ratio=0.1,
+            overlap_width_ratio=0.1
+        )
+
+        object_prediction_list = result.object_prediction_list
+        predictions = []
+        for j, obj in enumerate(object_prediction_list):
+            cls = obj.category.id
+            bb = obj.bbox
+            x1, y1, x2, y2 = bb.minx, bb.miny, bb.maxx, bb.maxy
+            label = classes[int(cls)]
+            if x1 is None:
+                print(f'mask {j} encountered problem box = {bb}')
+                import code
+                code.interact(local=dict(globals(), **locals()))
+            else:
+                mask_elem = SubElement(new_elem, 'box')
+                mask_elem.set('label', label)
+                mask_elem.set('source', 'manual')
+                mask_elem.set('occluded', '0')
+                mask_elem.set('xtl', str(x1))
+                mask_elem.set('ytl', str(y1))
+                mask_elem.set('xbr', str(x2))
+                mask_elem.set('ybr', str(y2))
+                mask_elem.set('z_order', '0')
+        print(len(object_prediction_list),'masks converted in image',image_name)
+
+    new_tree.write(output_file, encoding='utf-8', xml_declaration=True)
+
+    zip_filename = output_file.split('.')[0] + '.zip'
+    with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        zipf.write(output_file, arcname='output_xml_file.xml')
+    print('XML file zipped')
+
+    import code
+    code.interact(local=dict(globals(), **locals()))
