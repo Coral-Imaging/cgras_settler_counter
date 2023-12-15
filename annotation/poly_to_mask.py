@@ -50,7 +50,7 @@ def rle_to_binary_mask(rle_list,
 
 def maskxml_to_polyxml(source_file: str,
                        output_filename: str):
-    '''NOT TESTED!!!   maskxml_to_polyxml
+    '''maskxml_to_polyxml
     Converts a cvat1.1 source file annotation with masks to an cvat1.1 outputfile with annontations as polygons.
     NOTE: '.xml' must be included in both source_file and output_filename
 
@@ -96,22 +96,22 @@ def maskxml_to_polyxml(source_file: str,
         # acess mask annotations in the image
         for mask_ele in image_element.findall('mask'):
             mask_rle = mask_ele.get('rle')
-            mask_width = mask_ele.get('width')
-            mask_height = mask_ele.get('height')
+            mask_width = int(mask_ele.get('width'))
+            mask_height = int(mask_ele.get('height'))
+            mask_top = int(mask_ele.get('top'))
+            mask_left = int(mask_ele.get('left'))
             # rle into list 
             rle_list = list(map(int, mask_rle.split(',')))
             # convert the rle into mask
             mask = rle_to_binary_mask(rle_list, int(mask_width), int(mask_height), SHOW_IMAGE=False)
-            # convert the mask into polygon
+            # convert the mask into polygon and get in right format
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            # convert the polygon into points
             points = np.squeeze(contours[0])
-            # convert the points into string
-            points_string = ';'.join(','.join(str(point) for point in points))
+            formatted_points = ';'.join([f"{x+mask_left:.2f},{y+mask_top:.2f}" for x, y in points if x and y])
             #XML polygon element details
             poly_elem = SubElement(new_elem, 'polygon')
             poly_elem.set('label', mask_ele.get('label'))
-            poly_elem.set('points', points_string)
+            poly_elem.set('points', formatted_points)
             poly_elem.set('z_order', mask_ele.get('z_order'))
         print(len(image_element.findall('mask')),'masks converted into polygons',image_name)
         
@@ -250,7 +250,7 @@ def test_rle_to_mask(source_file: str):
 #test_rle_to_mask(source_file='masks.xml')
 
 def main():
-   polyxml_to_maskxml(source_file='/home/java/Downloads/cgras_20231028/annotations.xml', output_filename='cgras_20231028_masks.xml', SHOW_IMAGE=False)
-
+   #polyxml_to_maskxml(source_file='/home/java/Downloads/cgras_20231028/annotations.xml', output_filename='cgras_20231028_masks.xml', SHOW_IMAGE=False)
+    maskxml_to_polyxml(source_file='/home/java/Downloads/cgras_20231028_masks.xml', output_filename='cgras_20231028_polygons.xml')
 if __name__ == "__main__":
     main()
