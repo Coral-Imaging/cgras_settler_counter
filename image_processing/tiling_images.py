@@ -4,6 +4,10 @@
 script created to tile big images into smaller ones with annotations that can then be trained on via a yolo model
 """
 
+############## NOTE ##############################
+# Has been superseeded by test_sahi.py which is a better way of doing this (see code in the splitting images sections)
+# still works, but has a few bugs, and is not as good as the sahi code (though sahi code needs coco annotations not yolo annotations)
+
 import os
 import numpy as np
 import cv2 as cv
