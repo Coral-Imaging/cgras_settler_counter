@@ -105,25 +105,27 @@ def save_image_predictions_bb(predictions, imgname, imgsavedir, class_colours, c
     cv.imwrite(imgsave_path, img)
     return True
 
-# Download YOLOv8 model
-yolov8_model_path = '/home/java/Java/ultralytics/runs/segment/train6/weights/best.pt' #trained on tilled images
-#yolov8_model_path = '/home/java/Java/ultralytics/runs/segment/train5/weights/best.pt' #trained on 1280 imgsz
-export_dir="/home/java/Java/data/cgras_20230421/sahi"
-download_yolov8s_model(yolov8_model_path)
-
-detection_model = AutoDetectionModel.from_pretrained(
-    model_type='yolov8',
-    model_path=yolov8_model_path,
-    mask_threshold=0.3,
-    confidence_threshold=0.3,
-    device="cuda:0" # or "cpu" 
-)
-
+## 2 options via Sahi, 1. just do yolo detection as normal 2. do sliced detection
+# yolo_dect_type = 'yolo'
+yolo_dect_type = 'sliced'
+export_dir="/home/java/Java/data/cgras_20230421/sahi" #where to save the results
 image_file_list = sorted(glob.glob(os.path.join('/home/java/Java/data/cgras_20230421/train/images', '*.jpg')))
-## testing and playing with functions
-def detection_test(image_file_list, export_dir, detection_model):
+max_img_no = 10 #max number of images to process
+
+# OPTION 1 (yolo detection as normal but using sahi integrated functions)
+if yolo_dect_type == 'yolo':
+    yolov8_model_path = '/home/java/Java/ultralytics/runs/segment/train5/weights/best.pt' #trained on 1280 imgsz
+    download_yolov8s_model(yolov8_model_path)
+    detection_model = AutoDetectionModel.from_pretrained(
+        model_type='yolov8',
+        model_path=yolov8_model_path,
+        mask_threshold=0.3,
+        confidence_threshold=0.3,
+        device="cuda:0" # or "cpu" 
+    )
+    #basically same yolo code with a couple of modifications
     for i, image_file in enumerate(image_file_list):
-        if i>10:
+        if i>max_img_no:
             break
         img = cv.imread(image_file)
         imgw, imgh = img.shape[1], img.shape[0] 
@@ -142,11 +144,24 @@ def detection_test(image_file_list, export_dir, detection_model):
             predictions.append([x1n, y1n, x2n, y2n, conf, cls])
         save_image_predictions_bb(predictions, image_file, export_dir, class_colours, classes)
 
-        # import code
-        # code.interact(local=dict(globals(), **locals()))
 
-        ##Sliced inference - 
-        # working but has lots of False positives that are small boxes around random stuff
+# OPTION 2 (sliced detection)
+if yolo_dect_type == 'sliced':
+    yolov8_model_path = '/home/java/Java/ultralytics/runs/segment/train6/weights/best.pt' #trained on tilled images
+    download_yolov8s_model(yolov8_model_path)
+    detection_model = AutoDetectionModel.from_pretrained(
+        model_type='yolov8',
+        model_path=yolov8_model_path,
+        mask_threshold=0.3,
+        confidence_threshold=0.3,
+        device="cuda:0" # or "cpu" 
+    )
+    for i, image_file in enumerate(image_file_list):
+        if i>max_img_no:
+            break
+        img = cv.imread(image_file)
+        imgw, imgh = img.shape[1], img.shape[0] 
+        ##Sliced inference - working
         result = get_sliced_prediction(
             image_file,
             detection_model,
@@ -156,6 +171,7 @@ def detection_test(image_file_list, export_dir, detection_model):
             overlap_width_ratio=0.1
         )
 
+        #uses code I've created to save the detections as bounding boxes
         object_prediction_list = result.object_prediction_list
         predictions = []
         for obj in object_prediction_list:
@@ -165,12 +181,9 @@ def detection_test(image_file_list, export_dir, detection_model):
             x1, y1, x2, y2 = bb.minx, bb.miny, bb.maxx, bb.maxy
             x1n, y1n, x2n, y2n = x1/imgw, y1/imgh, x2/imgw, y2/imgh
             predictions.append([x1n, y1n, x2n, y2n, conf, cls])
-
-        # import code
-        # code.interact(local=dict(globals(), **locals()))
         save_image_predictions_bb(predictions, image_file, export_dir, class_colours, classes)
 
-        ##saves the image using sahi / yolo visualisation results, will have the same detections as above
+        #uses the sahi function to save the detections as bounding boxes (will do the same as above but note the different file_name)
         img_converted = cv.cvtColor(img, cv.COLOR_BGR2RGB)
         numpydata = asarray(img_converted)
         visualize_object_predictions(
@@ -181,88 +194,87 @@ def detection_test(image_file_list, export_dir, detection_model):
             file_name = 'vis_result',
             export_format = 'png'
         )
-        #does the same as visualise_object_predictions
         result.export_visuals(export_dir=export_dir) #
 
-# detection_test(image_file_list, export_dir, detection_model)
-# import code
-# code.interact(local=dict(globals(), **locals()))
+import code
+code.interact(local=dict(globals(), **locals()))
 
 ############## Pretend human in the loop ##############
-print("pretend human in the loop")
-#folder of new images
-img_location = os.path.join('/home/java/Java/data/cgras_20230421/train','images')
-#images were in cvat and then downloaded in CVAT format
-base_ann_file = "/home/java/Downloads/dec14/annotations.xml"
-output_file = "/home/java/Downloads/dec14_box.xml"
+# how the code might look with cvat human in the loop process
+# print("pretend human in the loop")
+# #folder of new images
+# img_location = os.path.join('/home/java/Java/data/cgras_20230421/train','images')
+# #images were in cvat and then downloaded in CVAT format
+# base_ann_file = "/home/java/Downloads/dec14/annotations.xml"
+# output_file = "/home/java/Downloads/dec14_box.xml"
 
-tree = ET.parse(base_ann_file)
-root = tree.getroot() 
-new_tree = ElementTree(Element("annotations"))
-# add version element
-version_element = ET.Element('version')
-version_element.text = '1.1'
-new_tree.getroot().append(version_element)
-# add Meta elements, (copy over from source_file)
-meta_element = root.find('.//meta')
-if meta_element is not None:
-    new_meta_elem = ET.SubElement(new_tree.getroot(), 'meta')
-    # copy all subelements of meta
-for sub_element in meta_element:
-    new_meta_elem.append(sub_element)
-    for i, image_element in enumerate(root.findall('.//image')):
-        print(i,'images being processed')
-        image_id = image_element.get('id')
-        image_name = image_element.get('name')
-        image_width = int(image_element.get('width'))
-        image_height = int(image_element.get('height'))
+# tree = ET.parse(base_ann_file)
+# root = tree.getroot() 
+# new_tree = ElementTree(Element("annotations"))
+# # add version element
+# version_element = ET.Element('version')
+# version_element.text = '1.1'
+# new_tree.getroot().append(version_element)
+# # add Meta elements, (copy over from source_file)
+# meta_element = root.find('.//meta')
+# if meta_element is not None:
+#     new_meta_elem = ET.SubElement(new_tree.getroot(), 'meta')
+#     # copy all subelements of meta
+# for sub_element in meta_element:
+#     new_meta_elem.append(sub_element)
+#     for i, image_element in enumerate(root.findall('.//image')):
+#         print(i,'images being processed')
+#         image_id = image_element.get('id')
+#         image_name = image_element.get('name')
+#         image_width = int(image_element.get('width'))
+#         image_height = int(image_element.get('height'))
 
-        # create new image element in new XML
-        new_elem = SubElement(new_tree.getroot(), 'image')
-        new_elem.set('id', image_id)
-        new_elem.set('name', image_name)
-        new_elem.set('width', str(image_width))
-        new_elem.set('height', str(image_height))
+#         # create new image element in new XML
+#         new_elem = SubElement(new_tree.getroot(), 'image')
+#         new_elem.set('id', image_id)
+#         new_elem.set('name', image_name)
+#         new_elem.set('width', str(image_width))
+#         new_elem.set('height', str(image_height))
 
-        image_file = os.path.join(img_location, image_name)
-        result = get_sliced_prediction(
-            image_file,
-            detection_model,
-            slice_height=640,
-            slice_width=640,
-            overlap_height_ratio=0.1,
-            overlap_width_ratio=0.1
-        )
+#         image_file = os.path.join(img_location, image_name)
+#         result = get_sliced_prediction(
+#             image_file,
+#             detection_model,
+#             slice_height=640,
+#             slice_width=640,
+#             overlap_height_ratio=0.1,
+#             overlap_width_ratio=0.1
+#         )
 
-        object_prediction_list = result.object_prediction_list
-        predictions = []
-        for j, obj in enumerate(object_prediction_list):
-            cls = obj.category.id
-            bb = obj.bbox
-            x1, y1, x2, y2 = bb.minx, bb.miny, bb.maxx, bb.maxy
-            label = classes[int(cls)]
-            if x1 is None:
-                print(f'mask {j} encountered problem box = {bb}')
-                import code
-                code.interact(local=dict(globals(), **locals()))
-            else:
-                mask_elem = SubElement(new_elem, 'box')
-                mask_elem.set('label', label)
-                mask_elem.set('source', 'manual')
-                mask_elem.set('occluded', '0')
-                mask_elem.set('xtl', str(x1))
-                mask_elem.set('ytl', str(y1))
-                mask_elem.set('xbr', str(x2))
-                mask_elem.set('ybr', str(y2))
-                mask_elem.set('z_order', '0')
-        print(len(object_prediction_list),'masks converted in image',image_name)
+#         object_prediction_list = result.object_prediction_list
+#         predictions = []
+#         for j, obj in enumerate(object_prediction_list):
+#             cls = obj.category.id
+#             bb = obj.bbox
+#             x1, y1, x2, y2 = bb.minx, bb.miny, bb.maxx, bb.maxy
+#             label = classes[int(cls)]
+#             if x1 is None:
+#                 print(f'mask {j} encountered problem box = {bb}')
+#                 import code
+#                 code.interact(local=dict(globals(), **locals()))
+#             else:
+#                 mask_elem = SubElement(new_elem, 'box')
+#                 mask_elem.set('label', label)
+#                 mask_elem.set('source', 'manual')
+#                 mask_elem.set('occluded', '0')
+#                 mask_elem.set('xtl', str(x1))
+#                 mask_elem.set('ytl', str(y1))
+#                 mask_elem.set('xbr', str(x2))
+#                 mask_elem.set('ybr', str(y2))
+#                 mask_elem.set('z_order', '0')
+#         print(len(object_prediction_list),'masks converted in image',image_name)
 
-    new_tree.write(output_file, encoding='utf-8', xml_declaration=True)
+#     new_tree.write(output_file, encoding='utf-8', xml_declaration=True)
 
-    zip_filename = output_file.split('.')[0] + '.zip'
-    with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        zipf.write(output_file, arcname='output_xml_file.xml')
-    print('XML file zipped')
+#     zip_filename = output_file.split('.')[0] + '.zip'
+#     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
+#         zipf.write(output_file, arcname='output_xml_file.xml')
+#     print('XML file zipped')
 
-    import code
-    code.interact(local=dict(globals(), **locals()))
+#     import code
+#     code.interact(local=dict(globals(), **locals()))
