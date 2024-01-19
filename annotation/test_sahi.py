@@ -181,6 +181,9 @@ if yolo_dect_type == 'sliced':
             x1, y1, x2, y2 = bb.minx, bb.miny, bb.maxx, bb.maxy
             x1n, y1n, x2n, y2n = x1/imgw, y1/imgh, x2/imgw, y2/imgh
             predictions.append([x1n, y1n, x2n, y2n, conf, cls])
+            print("line 184 o test_sahi.py")
+            import code
+            code.interact(local=dict(globals(), **locals()))
         save_image_predictions_bb(predictions, image_file, export_dir, class_colours, classes)
 
         #uses the sahi function to save the detections as bounding boxes (will do the same as above but note the different file_name)
