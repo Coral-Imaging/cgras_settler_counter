@@ -1,5 +1,17 @@
-"""Edits to sahi yolov8.py to allow for mask predictions. 
-Currently no code errors, but program uses to much memory and crashes before any predictions are made."""
+"""Currently sahi does not support mask predictions for yolo segmentation. Below are some edits designed to work towards this goal.
+Currently these edits and efforts cause too much memory usage and crashes the program before any predictions are made, therefore the
+validity of these edits are unknown and simply don't cause more errors when run."""
+
+### Path: sahi/models/yolov8.py
+### Editted by Java Terry, Januaray 2024 
+### Edits explained with '###' comments
+
+### Overview of edits ###
+### Basically a new atribute to the detection model was added which stores the yolo mask results.
+### This should probably be folded into the original predictions, but doing so causes later code 
+### (for loop in _create_object_prediction_list_from_original_predictions) to repeat extra times causing errors.
+
+### the mmdet.py model code was used as a small point of reference as that is the only detection model in sahi that looks to support masks
 
 # OBSS SAHI Tool
 # Code written by AnNT, 2023.
@@ -65,11 +77,9 @@ class Yolov8DetectionModel(DetectionModel):
         new_results = [
             result.boxes.data[result.boxes.data[:, 4] >= self.confidence_threshold] for result in prediction_result
         ]
-        masks = (prediction_result[0].masks) #TODO what about multiple masks in an image?
-        # print("line 65 of sahi yolov8.py")
-        # import code
-        # code.interact(local=dict(globals(), **locals()))
         self._original_predictions = new_results
+        ### Added next to lines to store mask results
+        masks = (prediction_result[0].masks) ###TODO what about multiple masks in an image?
         self._masks = masks
 
     @property
@@ -88,6 +98,7 @@ class Yolov8DetectionModel(DetectionModel):
         """
         Returns if model output contains segmentation mask
         """
+        ### Eddited next line from 'False' 
         return self._masks is not None
     
     def _create_object_prediction_list_from_original_predictions(
@@ -107,10 +118,11 @@ class Yolov8DetectionModel(DetectionModel):
                 List[[height, width],[height, width],...]
         """
         original_predictions = self._original_predictions
+        ### Added if else statement to handle mask predictions
         if self.has_mask:
             mask = self._masks
-            boolean_array = mask.data[0].cpu().detach().numpy()
-            bool_mask = Mask(boolean_array).bool_mask
+            boolean_array = mask.data[0].cpu().detach().numpy() ###suspect this line uses to much memory but not sure how to fix 
+            bool_mask = Mask(boolean_array).bool_mask ###Converting yolo mask object to sahi mask object, could be incorrect
         else:
             bool_mask = None
         # compatilibty for sahi v0.8.15
@@ -120,10 +132,6 @@ class Yolov8DetectionModel(DetectionModel):
         # handle all predictions
         object_prediction_list_per_image = []
         for image_ind, image_predictions_in_xyxy_format in enumerate(original_predictions):
-            #Java code
-            print(f'115 of sahi yolov8.py, image_ind = {image_ind}, shift amount = {shift_amount_list}')
-            # import code
-            # code.interact(local=dict(globals(), **locals()))
             shift_amount = shift_amount_list[image_ind]
             full_shape = None if full_shape_list is None else full_shape_list[image_ind]
             
@@ -159,9 +167,7 @@ class Yolov8DetectionModel(DetectionModel):
                     logger.warning(f"ignoring invalid prediction with bbox: {bbox}")
                     continue
                 
-                # print("156 of sahi yolov8.py")
-                # import code
-                # code.interact(local=dict(globals(), **locals()))
+                ### Added bool_mask to object_prediction instead of it being set to 'None'
                 object_prediction = ObjectPrediction(
                     bbox=bbox,
                     category_id=category_id,
@@ -173,4 +179,5 @@ class Yolov8DetectionModel(DetectionModel):
                 )
                 object_prediction_list.append(object_prediction)
             object_prediction_list_per_image.append(object_prediction_list)
+        
         self._object_prediction_list_per_image = object_prediction_list_per_image
