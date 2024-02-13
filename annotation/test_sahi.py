@@ -26,22 +26,8 @@ import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element, SubElement, ElementTree
 import zipfile
 
-######################## spliting images ########################################
-# Download annotations from cvat using coco fromat (cvat should have images in polygons)
-# then use slice coco to cut the images up and the annotations accordingly
-# then convert to yolo version for future use
-#################################################################################
+### move files 
 
-# output_path = '/home/java/Java/data/cgras_20230421/sahi'
-# coco_ann_file = '/home/java/Java/data/cgras_20230421/coco/annotations/instances_default.json'
-# coco_ann_save_name = 'test'
-
-# yolo_save = os.path.join(output_path, 'train')
-
-# coco_dict, coco_path = slice_coco(
-#     coco_annotation_file_path=coco_ann_file,
-#     image_dir='/home/java/Java/data/cgras_20230421/train/images',
-#     output_coco_annotation_file_name=coco_ann_save_name,
 #     output_dir=output_path,
 #     slice_height=640,
 #     slice_width=640,
@@ -110,11 +96,11 @@ def save_image_predictions_bb(predictions, imgname, imgsavedir, class_colours, c
 yolo_dect_type = 'sliced'
 export_dir="/home/java/Java/data/cgras_20230421/sahi" #where to save the results
 image_file_list = sorted(glob.glob(os.path.join('/home/java/Java/data/cgras_20230421/train/images', '*.jpg')))
-max_img_no = 10 #max number of images to process
+yolov8_model_path = '/home/java/Java/ultralytics/runs/segment/train6/weights/best.pt' #trained on tilled images
+max_img_no = 100000 #max number of images to process
 
 # OPTION 1 (yolo detection as normal but using sahi integrated functions)
 if yolo_dect_type == 'yolo':
-    yolov8_model_path = '/home/java/Java/ultralytics/runs/segment/train5/weights/best.pt' #trained on 1280 imgsz
     download_yolov8s_model(yolov8_model_path)
     detection_model = AutoDetectionModel.from_pretrained(
         model_type='yolov8',
@@ -144,10 +130,8 @@ if yolo_dect_type == 'yolo':
             predictions.append([x1n, y1n, x2n, y2n, conf, cls])
         save_image_predictions_bb(predictions, image_file, export_dir, class_colours, classes)
 
-
 # OPTION 2 (sliced detection)
 if yolo_dect_type == 'sliced':
-    yolov8_model_path = '/home/java/Java/ultralytics/runs/segment/train6/weights/best.pt' #trained on tilled images
     download_yolov8s_model(yolov8_model_path)
     detection_model = AutoDetectionModel.from_pretrained(
         model_type='yolov8',
@@ -159,6 +143,7 @@ if yolo_dect_type == 'sliced':
     for i, image_file in enumerate(image_file_list):
         if i>max_img_no:
             break
+        print(f"{i} images out of {len(image_file_list)} processed")
         img = cv.imread(image_file)
         imgw, imgh = img.shape[1], img.shape[0] 
         ##Sliced inference - working
@@ -181,9 +166,7 @@ if yolo_dect_type == 'sliced':
             x1, y1, x2, y2 = bb.minx, bb.miny, bb.maxx, bb.maxy
             x1n, y1n, x2n, y2n = x1/imgw, y1/imgh, x2/imgw, y2/imgh
             predictions.append([x1n, y1n, x2n, y2n, conf, cls])
-            print("line 184 o test_sahi.py")
-            import code
-            code.interact(local=dict(globals(), **locals()))
+            
         save_image_predictions_bb(predictions, image_file, export_dir, class_colours, classes)
 
         #uses the sahi function to save the detections as bounding boxes (will do the same as above but note the different file_name)
