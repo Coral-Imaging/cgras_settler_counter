@@ -49,23 +49,26 @@ class_colours = {classes[0]: blue,
 ######### Constants and directories #############
 TILE_WIDTH= 640
 TILE_HEIGHT = 640
-TRUNCATE_PERCENT = 0.5
+TRUNCATE_PERCENT = 0.1
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
 OBJ_DISTANCE = 10
+max_img_no = 1000
 
 #large_images_dir = '/home/java/Java/data/cgras_20231028'
-large_images_dir = '/home/java/Java/data/cgras_20230421/train'
+#large_images_dir = '/home/java/Java/data/cgras_20230421/train'
+
 #save_path = '/home/java/Java/data/cgras_20231028/tilling'
-save_path = '/home/java/Java/data/cgras_20230421/train'
+#save_path = '/home/java/Java/data/cgras_20230421/train'
 weights_file_path = '/home/java/Java/ultralytics/runs/segment/train6/weights/best.pt' #trained on tilled images
 #save_det = os.path.join(save_path, 'detections')
 save_det = "/home/java/Java/data/cgras_20230421/testing_till_n_predict" #where to save the results
-os.makedirs(save_path, exist_ok=True)
+save_det = "/home/java/Java/data/cgras_231201-1400-161/detections/till_n_predict"
+#os.makedirs(save_path, exist_ok=True)
 os.makedirs(save_det, exist_ok=True)
 # load model
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 model = YOLO(weights_file_path).to(device)
-
+image_file_list = sorted(glob.glob(os.path.join('/home/java/Java/data/cgras_231201-1400-161/captures', '*.jpg')))
 
 ################## functions ##########################
 def create_polys(results, image, conf, class_list, x_shift, y_shift):
@@ -218,10 +221,10 @@ def stich_n_vis(obj_list, img_name, save_path):
 # works, 
 # NOTE: is it really better then just running the model on the full image?
     # marks are more detailed and accurate, but more corals are missed from what I can tell
-image_file_list = sorted(glob.glob(os.path.join(large_images_dir,'images','*.jpg')))
+
 
 for i, image_file in enumerate(image_file_list):
-    if i>10:
+    if i>max_img_no:
         break
     
     obj_list = find_objects(image_file)

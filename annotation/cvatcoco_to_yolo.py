@@ -10,11 +10,11 @@ import random
 
 #export from CVAT as COCO1.1
 #comes in as ziped file with annotations/instances_default.json
-file_name = 'aloripes_dec_2023_500_ann.zip'
-save_dir = '/home/java/Java/data/aloripes_dec_2023_500_ann'
+file_name = 'alor_2022_500.zip'
+save_dir = '/home/java/Downloads/cslics_202212_aloripedes_500_updated'
 download_dir = '/home/java/Downloads'
 split = True #got to get images in dir before split
-fill_in = False #if want to fill in blank text files
+fill_in = True #if want to fill in blank text files
 
 # convert coco to yolo
 with zipfile.ZipFile(os.path.join(download_dir, file_name), 'r') as zip_ref:
@@ -37,11 +37,12 @@ for filename in os.listdir(coco_labels):
 #if images with no annotations
 #need to add in a bank text file for labels
 if fill_in:
-    images_folder = save_dir+'images'
-    labels_folder = save_dir+'labels'
+    images_folder = os.path.join(save_dir,'images')
+    labels_folder = os.path.join(save_dir,'labels')
     image_files = [os.path.splitext(file)[0] for file in os.listdir(images_folder)]
     label_files = [os.path.splitext(file)[0] for file in os.listdir(labels_folder)]
     missing_files = [file for file in image_files if file not in label_files]
+    print(f'number of missing files: {len(missing_files)}')
     for file_name in missing_files:
         with open(os.path.join(labels_folder, file_name+'.txt'), 'w') as file:
             pass
@@ -49,11 +50,11 @@ if fill_in:
 
 #if want to split train, val, test data
 #assume images in same folder as labels
-save_dir = '/home/java/Java/data/cslics_aloripedes_n_amtenuis_jan'
+save_dir = '/home/java/Downloads/cslics_202212_aloripedes_500_updated'
 if split:
-    train_ratio = 0.8
-    test_ratio = 0.1
-    valid_ratio = 0.1
+    train_ratio = 0.7
+    test_ratio = 0.15
+    valid_ratio = 0.15
     def check_ratio(test_ratio,train_ratio,valid_ratio):
         if(test_ratio>1 or test_ratio<0): ValueError(test_ratio,f'test_ratio must be > 1 and test_ratio < 0, test_ratio={test_ratio}')
         if(train_ratio>1 or train_ratio<0): ValueError(train_ratio,f'train_ratio must be > 1 and train_ratio < 0, train_ratio={train_ratio}')
@@ -71,19 +72,18 @@ if split:
     validimg, validtext, testimg, testtext = [], [], [], []
 
     # function to seperate files into different lists randomly while retaining the same .txt and .jpg name in the specific type of list
-    def seperate_files(number,imglist,textlist,noleft):
+    def seperate_files(number,newimglist,newtxtlist,oldimglist,oldtxtlist):
         for i in range(int(number)):
-            r = random.randint(0, noleft)
-            imglist.append(imagelist[r])
-            textlist.append(txtlist[r])
-            txtlist.remove(txtlist[r])
-            imagelist.remove(imagelist[r])
-            noleft -= 1
-        return noleft
+            r = random.randint(0, len(oldtxtlist) - 1)
+            newimglist.append(oldimglist[r])
+            newtxtlist.append(oldtxtlist[r])
+            oldimglist.remove(oldimglist[r])
+            oldtxtlist.remove(oldtxtlist[r])
+        return oldimglist, oldtxtlist
 
     #pick some random files
-    noleft = seperate_files(imgno*valid_ratio,validimg,validtext,noleft)
-    seperate_files(imgno*test_ratio,testimg,testtext,noleft)
+    imagelist, txtlist = seperate_files(imgno*valid_ratio,validimg,validtext,imagelist,txtlist)
+    imagelist, txtlist = seperate_files(imgno*test_ratio,testimg,testtext,imagelist,txtlist)
 
     # function to preserve symlinks of src file, otherwise default to copy
     def copy_link(src, dst):
