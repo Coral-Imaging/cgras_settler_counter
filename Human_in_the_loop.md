@@ -8,9 +8,10 @@ The following pipeline is designed to automate and streamline the Human-in-the-L
 2. Download the empty annotation file, in the CVAT1.1 format. 
     This file is refered to as a basefile, and example can be seen as [annotations.xml](https://github.com/Coral-Imaging/cgras_settler_counter/blob/main/annotations.xml)
     Extraction from zip may be needed.
-3. Run the `predict_to_cvat.py` script with the correct data_location and basefile locations.
-4. The script will output a zipped *'completed.xml'* file. Upload this file to CVAT (using CVAT1.1 format). 
-    NOTE: the current script outputs predictions into CVAT as polyshapes, but this can easily be changed to masks.
+3. Run the `annotation/roboflow_sahi.py` script updating thre file locations as needed, this will slice an image up, detect corals as segmentated masks, and save the detections in a zipped *'completed.xml'* file in CVAT1.1 format as masks. 
+Alternativly;
+3. Run the `annotation/predict_to_cvat.py` script with the correct data_location and basefile locations. The script will output a zipped *'completed.xml'* file. Upload this file to CVAT (using CVAT1.1 format). NOTE: the current script outputs predictions into CVAT as polyshapes, but this can easily be changed to masks by setting the output_as_masks to True.
+
 
 ## 2. Exporting annotated CVAT data and training a model
 **Prerequisite:** *Assuming the annotated data exits on CVAT as polygon shapes.*

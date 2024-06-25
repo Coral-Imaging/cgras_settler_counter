@@ -213,13 +213,13 @@ class Predict2Cvat:
         print('XML file zipped')
 
 
-# print("Detecting corals and saving to annotation format")
-# Det = Predict2Cvat(base_img_location, output_filename, weight_file, base_file, save_img=False)
-# Det.run()
-# print("Done detecting corals")
+print("Detecting corals and saving to annotation format")
+Det = Predict2Cvat(base_img_location, output_filename, weight_file, base_file, save_img=False)
+Det.run()
+print("Done detecting corals")
 
-# import code
-# code.interact(local=dict(globals(), **locals()))
+import code
+code.interact(local=dict(globals(), **locals()))
 
 ## Visualise Detections on images
 if visualise:

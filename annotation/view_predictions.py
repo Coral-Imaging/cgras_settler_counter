@@ -14,12 +14,14 @@ from PIL import Image
 from Utils import classes, class_colours
 
 ultralitics_version = False #set to true, if want example of ultralitics prediction
-weights_file_path = '/home/java/Java/ultralytics/runs/segment/train6/weights/best.pt' #trained on tilled images
+#weights_file_path = '/home/java/Java/ultralytics/runs/segment/train6/weights/best.pt' #trained on tilled images
 #weights_file_path = '/home/java/Java/ultralytics/runs/segment/train4/weights/best.pt' #trained on 640 imgsz
-#weights_file_path = '/home/java/Java/ultralytics/runs/segment/train5/weights/best.pt' #trained on 1280 imgsz
-save_dir = '/home/java/Java/data/cgras_20230421/tilling'
-img_folder = os.path.join(save_dir, 'train', 'images')
-txt_folder = os.path.join(save_dir, 'train', 'labels')
+weights_file_path = '/home/java/Java/ultralytics/runs/segment/train5/weights/best.pt' #trained on 1280 imgsz
+weight_file = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt" #dorian used?
+
+save_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/ultralytics_data_detections'
+img_folder = os.path.join('/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples', 'ultralytics_data')
+#txt_folder = os.path.join(save_dir, 'train', 'labels')
 
 #save txt results like they would be saved by ultralytics
 def save_txt_predictions_masks(results, conf, class_list, save_path):
@@ -41,7 +43,7 @@ def save_txt_predictions_masks(results, conf, class_list, save_path):
                 file.write(str(item) + ' ')
             file.write('\n')
 
-def save_image_predictions_mask(results, image, imgname, save_path, conf, class_list, classes, class_colours, ground_truth, txt):
+def save_image_predictions_mask(results, image, imgname, save_path, conf, class_list, classes, class_colours, ground_truth=False, txt=None):
     """save_image_predictions_mask
     saves the predicted masks results onto an image, recoring confidence and class as well. 
     Can also show ground truth anotiations from the associated textfile (assumed annotiations are normalised xy corifinate points)
@@ -72,7 +74,7 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
     else:
         print(f'No masks found in {imgname}')
     
-    if ground_truth:
+    if ground_truth & (txt is not None):
         points_normalised, points, class_idx = [], [], []
         with open(txt, "r") as file:
             lines = file.readlines()
@@ -98,7 +100,7 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
     alpha = 0.5
     semi_transparent_mask = cv.addWeighted(image, 1-alpha, masked, alpha, 0)
     imgsavename = os.path.basename(imgname)
-    imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det_s.jpg')
+    imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det_mask.jpg')
     cv.imwrite(imgsave_path, semi_transparent_mask)
 
     # import code
@@ -108,21 +110,21 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 model = YOLO(weights_file_path).to(device)
 
-import code
-code.interact(local=dict(globals(), **locals()))
+# import code
+# code.interact(local=dict(globals(), **locals()))
 # get predictions
 print('Model Inference:')
 
 imglist = sorted(glob.glob(os.path.join(img_folder, '*.jpg')))
-txtlist = sorted(glob.glob(os.path.join(txt_folder, '*.txt')))
-imgsave_dir = os.path.join(save_dir, 'detections', 'detections_images')
+#txtlist = sorted(glob.glob(os.path.join(txt_folder, '*.txt')))
+imgsave_dir = save_dir
 os.makedirs(imgsave_dir, exist_ok=True)
 for i, imgname in enumerate(imglist):
     print(f'predictions on {i+1}/{len(imglist)}')
-    # if i >= 509: # for debugging purposes
-        # break 
-        # import code
-        # code.interact(local=dict(globals(), **locals()))
+    if i >= 10: # for debugging purposes
+        break 
+        import code
+        code.interact(local=dict(globals(), **locals()))
     image = cv.imread(imgname)
     results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
     conf, class_list = [], [] 
@@ -130,9 +132,9 @@ for i, imgname in enumerate(imglist):
         conf.append(b.conf.item())
         class_list.append(b.cls.item())
     
-    txt = txtlist[i]
-    ground_truth = True
-    save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours, ground_truth, txt)
+    #txt = txtlist[i]
+    ground_truth = False
+    save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours)
 
 
 

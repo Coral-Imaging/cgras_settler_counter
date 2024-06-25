@@ -16,15 +16,15 @@ from Utils import classes, poly_2_rle
 import sys
 
 ### File locations ###
-base_file = "/home/java/Java/Cgras/cgras_settler_counter/annotations.xml"
-base_img_location = "/home/java/Java/data/cgras_20230421/train/images"
-output_filename = "/home/java/Downloads/complete.xml"
+base_file = "/home/java/Downloads/cgras_2024_empty/annotations.xml"
+base_img_location = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/ultralytics_data"
+output_filename = "/home/java/Downloads/cgras_2023_complete.xml"
 # base_file = sys.args[1]
 # base_img_location = sys.args[2]
 # output_filename = sys.args[3]
 
 ### Parameters ###
-weight_file = "/home/java/Java/ultralytics/runs/segment/train4/weights/best.pt"
+weight_file = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt"
 
 class Detect2Cvat:
     BASE_FILE = "/home/java/Java/Cgras/cgras_settler_counter/annotations.xml"
@@ -80,6 +80,10 @@ class Detect2Cvat:
             results = self.model.predict(source=image_file, iou=0.5, agnostic_nms=True)
             masks = results[0].masks
             class_list = [b.cls.item() for b in results[0].boxes]
+
+            if masks==None:
+                print('No masks found in image',image_name)
+                continue
 
             for j, m in enumerate(masks):
                 label = classes[int(class_list[j])]

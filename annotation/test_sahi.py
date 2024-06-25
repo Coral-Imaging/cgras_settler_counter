@@ -1,8 +1,9 @@
 #! /usr/bin/env python3
 
+### NOTE: Superceeded by roboflow_sahi.py
+
 """test_sahi.py
 seeing if the sahi works fro yolo8 https://docs.ultralytics.com/guides/sahi-tiled-inference/
-possible segmetation: https://github.com/obss/sahi/pull/918/files
 """
 
 # pip install -U ultralytics sahi ##TODO add to yaml file for making enviroment
@@ -26,20 +27,6 @@ import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element, SubElement, ElementTree
 import zipfile
 
-### move files 
-
-#     output_dir=output_path,
-#     slice_height=640,
-#     slice_width=640,
-#     overlap_height_ratio=0.2,
-#     overlap_width_ratio=0.2,
-#     min_area_ratio=0.1,
-#     ignore_negative_samples=True
-# )
-# print("done cutting")
-
-# import code
-# code.interact(local=dict(globals(), **locals()))
 
 # convert_coco(labels_dir=output_path, save_dir=yolo_save,
 #                  use_segments=True, use_keypoints=False, cls91to80=False)
@@ -94,10 +81,10 @@ def save_image_predictions_bb(predictions, imgname, imgsavedir, class_colours, c
 ## 2 options via Sahi, 1. just do yolo detection as normal 2. do sliced detection
 # yolo_dect_type = 'yolo'
 yolo_dect_type = 'sliced'
-export_dir="/home/java/Java/data/cgras_20230421/sahi" #where to save the results
-image_file_list = sorted(glob.glob(os.path.join('/home/java/Java/data/cgras_20230421/train/images', '*.jpg')))
-yolov8_model_path = '/home/java/Java/ultralytics/runs/segment/train6/weights/best.pt' #trained on tilled images
-max_img_no = 100000 #max number of images to process
+export_dir="/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/ultralytics_data_detections" #where to save the results
+image_file_list = sorted(glob.glob(os.path.join('/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/ultralytics_data', '*.jpg')))
+yolov8_model_path = '/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt' #dorian
+max_img_no = 10 #max number of images to process
 
 # OPTION 1 (yolo detection as normal but using sahi integrated functions)
 if yolo_dect_type == 'yolo':
@@ -184,83 +171,3 @@ if yolo_dect_type == 'sliced':
 
 import code
 code.interact(local=dict(globals(), **locals()))
-
-############## Pretend human in the loop ##############
-# how the code might look with cvat human in the loop process
-# print("pretend human in the loop")
-# #folder of new images
-# img_location = os.path.join('/home/java/Java/data/cgras_20230421/train','images')
-# #images were in cvat and then downloaded in CVAT format
-# base_ann_file = "/home/java/Downloads/dec14/annotations.xml"
-# output_file = "/home/java/Downloads/dec14_box.xml"
-
-# tree = ET.parse(base_ann_file)
-# root = tree.getroot() 
-# new_tree = ElementTree(Element("annotations"))
-# # add version element
-# version_element = ET.Element('version')
-# version_element.text = '1.1'
-# new_tree.getroot().append(version_element)
-# # add Meta elements, (copy over from source_file)
-# meta_element = root.find('.//meta')
-# if meta_element is not None:
-#     new_meta_elem = ET.SubElement(new_tree.getroot(), 'meta')
-#     # copy all subelements of meta
-# for sub_element in meta_element:
-#     new_meta_elem.append(sub_element)
-#     for i, image_element in enumerate(root.findall('.//image')):
-#         print(i,'images being processed')
-#         image_id = image_element.get('id')
-#         image_name = image_element.get('name')
-#         image_width = int(image_element.get('width'))
-#         image_height = int(image_element.get('height'))
-
-#         # create new image element in new XML
-#         new_elem = SubElement(new_tree.getroot(), 'image')
-#         new_elem.set('id', image_id)
-#         new_elem.set('name', image_name)
-#         new_elem.set('width', str(image_width))
-#         new_elem.set('height', str(image_height))
-
-#         image_file = os.path.join(img_location, image_name)
-#         result = get_sliced_prediction(
-#             image_file,
-#             detection_model,
-#             slice_height=640,
-#             slice_width=640,
-#             overlap_height_ratio=0.1,
-#             overlap_width_ratio=0.1
-#         )
-
-#         object_prediction_list = result.object_prediction_list
-#         predictions = []
-#         for j, obj in enumerate(object_prediction_list):
-#             cls = obj.category.id
-#             bb = obj.bbox
-#             x1, y1, x2, y2 = bb.minx, bb.miny, bb.maxx, bb.maxy
-#             label = classes[int(cls)]
-#             if x1 is None:
-#                 print(f'mask {j} encountered problem box = {bb}')
-#                 import code
-#                 code.interact(local=dict(globals(), **locals()))
-#             else:
-#                 mask_elem = SubElement(new_elem, 'box')
-#                 mask_elem.set('label', label)
-#                 mask_elem.set('source', 'manual')
-#                 mask_elem.set('occluded', '0')
-#                 mask_elem.set('xtl', str(x1))
-#                 mask_elem.set('ytl', str(y1))
-#                 mask_elem.set('xbr', str(x2))
-#                 mask_elem.set('ybr', str(y2))
-#                 mask_elem.set('z_order', '0')
-#         print(len(object_prediction_list),'masks converted in image',image_name)
-
-#     new_tree.write(output_file, encoding='utf-8', xml_declaration=True)
-
-#     zip_filename = output_file.split('.')[0] + '.zip'
-#     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
-#         zipf.write(output_file, arcname='output_xml_file.xml')
-#     print('XML file zipped')
-
-#     import code
-#     code.interact(local=dict(globals(), **locals()))
