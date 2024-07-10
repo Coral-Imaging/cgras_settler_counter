@@ -11,6 +11,16 @@ import matplotlib.pyplot as plt
 import zipfile
 from Utils import binary_mask_to_rle, poly_2_rle
 
+def validate_rle(rle_list, width, height):
+    total_pixels = width * height
+    pixel_count = sum(rle_list)
+    
+    if pixel_count != total_pixels:
+        print(f"Warning: RLE data does not match the total number of pixels. RLE pixels: {pixel_count}, Expected pixels: {total_pixels}")
+        return False
+    
+    return True
+
 def rle_to_binary_mask(rle_list, 
                        width: int, 
                        height: int, 
@@ -29,15 +39,19 @@ def rle_to_binary_mask(rle_list,
     """
     mask = np.zeros((height, width), dtype=np.uint8) 
     current_pixel = 0
-    
+    total_pixels = width * height
+
+    if not validate_rle(rle_list, width, height):
+        import code
+        code.interact(local=dict(globals(), **locals()))
+
     for i in range(0, len(rle_list)):
         run_length = int(rle_list[i]) #find the length of current 0 or 1 run
         if (i % 2 == 0): #if an even number the pixel value will be 0
             run_value = 0
         else:
             run_value = 1
-
-        for j in range(run_length): #fill the pixel with the correct value
+        for j in range(run_length): # fill the pixel with the correct value
             mask.flat[current_pixel] = run_value 
             current_pixel += 1
 
@@ -103,16 +117,30 @@ def maskxml_to_polyxml(source_file: str,
             # rle into list 
             rle_list = list(map(int, mask_rle.split(',')))
             # convert the rle into mask
-            mask = rle_to_binary_mask(rle_list, int(mask_width), int(mask_height), SHOW_IMAGE=False)
+            try:
+                mask = rle_to_binary_mask(rle_list, mask_width, mask_height, SHOW_IMAGE=False)
+            except:
+                print("error in rle_to_binary_mask")
+                import code
+                code.interact(local=dict(globals(), **locals()))
             # convert the mask into polygon and get in right format
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            points = np.squeeze(contours[0])
-            formatted_points = ';'.join([f"{x+mask_left:.2f},{y+mask_top:.2f}" for x, y in points if x and y])
-            #XML polygon element details
-            poly_elem = SubElement(new_elem, 'polygon')
-            poly_elem.set('label', mask_ele.get('label'))
-            poly_elem.set('points', formatted_points)
-            poly_elem.set('z_order', mask_ele.get('z_order'))
+            for contour in contours:
+                if len(contour) < 3:
+                    print(f"Contour with insufficient points found for image {image_name}: {len(contour)} points")
+                    continue
+                points = np.squeeze(contour)
+                if len(points.shape) != 2 or points.shape[1] != 2:
+                    print(f"Unexpected points shape for image {image_name}: {points.shape}")
+                    continue
+
+                formatted_points = ';'.join([f"{x+mask_left},{y+mask_top}" for x, y in points])
+                # XML polygon element details
+                poly_elem = SubElement(new_elem, 'polygon')
+                poly_elem.set('label', mask_ele.get('label'))
+                poly_elem.set('points', formatted_points)
+                poly_elem.set('z_order', mask_ele.get('z_order'))
+            
         print(len(image_element.findall('mask')),'masks converted into polygons',image_name)
         
     new_tree.write(output_filename, encoding='utf-8', xml_declaration=True)
@@ -251,6 +279,8 @@ def test_rle_to_mask(source_file: str):
 
 def main():
    #polyxml_to_maskxml(source_file='/home/java/Downloads/cgras_20231028/annotations.xml', output_filename='cgras_20231028_masks.xml', SHOW_IMAGE=False)
-    maskxml_to_polyxml(source_file='/home/java/Downloads/cgras_20231028_masks.xml', output_filename='cgras_20231028_polygons.xml')
+    maskxml_to_polyxml(source_file='/home/java/Downloads/cgras_cvat_test/annotations.xml', output_filename='/home/java/Downloads/cgras_20240710_polygons.xml')
+
+
 if __name__ == "__main__":
     main()

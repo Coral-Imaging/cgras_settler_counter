@@ -14,9 +14,11 @@ Alternativly;
 
 
 ## 2. Exporting annotated CVAT data and training a model
-**Prerequisite:** *Assuming the annotated data exits on CVAT as polygon shapes.*
+**Prerequisite:** *Assuming the annotated data exits on CVAT as polygon shapes.* 
+    If data is as a mask in cvat, then the `poly_to_mask.py` script can be used to convert to polygon shapes
 1. Export the job/task dataset in the COCO1.0 format.
 2. To create the yolo labels run the `cvatcoco_to_yolo.py` script. Making sure to update the file location and names as nessary.
+    If the data needs to be sliced for training with sahi or at high resolutions, use `tiling_images.py`
 3. The `cvatcoco_to_yolo.py` script can also split the data and fill in any blank annotation files (just read the note before use).
 4. Manually create a `.yml` file specifing these locations, [cgras_20230421.yml](https://github.com/Coral-Imaging/cgras_settler_counter/blob/main/segmenter/cgras_20230421.yaml) is an example of this.
 5. Run `train_segmenter.py` script making sure to update the yml file.
