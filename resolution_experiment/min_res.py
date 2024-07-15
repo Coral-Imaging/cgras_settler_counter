@@ -21,6 +21,10 @@ script to run the experiment of minimum resolution for coral detection model
     We are training on unrectified images, therefore providing the NN unrectified images
     
 """
+
+# TODO annotation issue
+# TODO run this over a whole image - SAHI+Roboflow
+# TODO extract quantitative metrics - 
 import matplotlib.pyplot as plt
 import cv2 as cv
 import os
@@ -89,6 +93,11 @@ for i in image_sizes:
     # show detections on image
     detections = sv.Detections.from_ultralytics(results[0])
     annotated_image = mask_annotator.annotate(scene=image_r, detections=detections)
+    
+    # annotate
+    label_annotator = sv.LabelAnnotator(text_padding=2,text_scale=0.25)
+    labels = [f"{model.model.names[class_id]} {detections.confidence[i]:.2f}" for i, class_id in enumerate(detections.class_id)]
+    annotated_image = label_annotator.annotate(scene=annotated_image, detections=detections, labels=labels)
     cv.imwrite(f"{os.path.join(out_dir,base_name)}_det_{width_r}.jpg", annotated_image)
     
     # get metric(s) on image (IoU)
