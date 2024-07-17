@@ -16,38 +16,41 @@ import random
 
 #export from CVAT as COCO1.1
 #comes in as ziped file with annotations/instances_default.json
-file_name = 'cgras_coco_polygons.zip' #'cgras_coco.zip'
+file_name = 'cgras_20240716_coco.zip' #'cgras_coco.zip'
 save_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cvat_labels'
 download_dir = '/home/java/Downloads'
-data_locaton = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data' #location of /images folder
-split = False #got to get images in dir before split
-save_dir_for_split = '/home/java/Downloads/cslics_202212_aloripedes_500_updated' #assume images in same folder as labels
+#data_locaton = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data' #location of /images folder
+data_locaton = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/tilling1/train'
+convert = False
+split = True #got to get images in dir before split
+save_dir_for_split = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_split_n_tilled' #assume images in same folder as labels
 fill_in = False #if want to fill in blank text files
 
-# convert coco to yolo
-with zipfile.ZipFile(os.path.join(download_dir, file_name), 'r') as zip_ref:
-   zip_ref.extractall(download_dir)
-    #annotation folder in downloads
+if convert:
+    # convert coco to yolo
+    with zipfile.ZipFile(os.path.join(download_dir, file_name), 'r') as zip_ref:
+        zip_ref.extractall(download_dir)
+            #annotation folder in downloads
 
-downloaded_labels_dir = os.path.join(download_dir, 'annotations')
-lable_dir = os.path.join(save_dir, 'labels')
-coco_labels = os.path.join(lable_dir, 'default')
+    downloaded_labels_dir = os.path.join(download_dir, 'annotations')
+    lable_dir = os.path.join(save_dir, 'labels')
+    coco_labels = os.path.join(lable_dir, 'default')
 
-convert_coco(labels_dir=downloaded_labels_dir, save_dir=save_dir,
-                 use_segments=True, use_keypoints=False, cls91to80=False)
+    convert_coco(labels_dir=downloaded_labels_dir, save_dir=save_dir,
+                    use_segments=True, use_keypoints=False, cls91to80=False)
 
-#move from subfolder in coco/labels/defult to where data is
-data_labels = os.path.join(data_locaton, 'labels')
-os.makedirs(data_labels, exist_ok=True)
-for filename in os.listdir(coco_labels):
-    source = os.path.join(coco_labels, filename)
-    destination = os.path.join(data_labels, filename)
-    if os.path.isfile(source):
-        shutil.move(source, destination)
-shutil.rmtree(save_dir) #tidy up
+    #move from subfolder in coco/labels/defult to where data is
+    data_labels = os.path.join(data_locaton, 'labels')
+    os.makedirs(data_labels, exist_ok=True)
+    for filename in os.listdir(coco_labels):
+        source = os.path.join(coco_labels, filename)
+        destination = os.path.join(data_labels, filename)
+        if os.path.isfile(source):
+            shutil.move(source, destination)
+    shutil.rmtree(save_dir) #tidy up
 
-import code
-code.interact(local=dict(globals(), **locals()))
+    import code
+    code.interact(local=dict(globals(), **locals()))
 
 #if images with no annotations
 #need to add in a bank text file for labels
@@ -65,8 +68,9 @@ if fill_in:
 
 #if want to split train, val, test data
 if split:
-    train_ratio = 0.7
-    test_ratio = 0.15
+    os.makedirs(save_dir_for_split, exist_ok=True)
+    train_ratio = 0.85
+    test_ratio = 0
     valid_ratio = 0.15
     def check_ratio(test_ratio,train_ratio,valid_ratio):
         if(test_ratio>1 or test_ratio<0): ValueError(test_ratio,f'test_ratio must be > 1 and test_ratio < 0, test_ratio={test_ratio}')
@@ -75,12 +79,13 @@ if split:
         if not((train_ratio+test_ratio+valid_ratio)==1): ValueError("sum of train/val/test ratio must equal 1")
     check_ratio(test_ratio,train_ratio,valid_ratio)
 
-    imagelist = glob.glob(os.path.join(save_dir_for_split,'images', '*.jpg'))
-    txtlist = glob.glob(os.path.join(save_dir_for_split, 'labels', '*.txt'))
+    imagelist = glob.glob(os.path.join(data_locaton,'images', '*.jpg'))
+    txtlist = glob.glob(os.path.join(data_locaton, 'labels', '*.txt'))
     txtlist.sort()
     imagelist.sort()
     imgno = len(txtlist) 
     noleft = imgno
+    print(f"processing {len(imagelist)}")
 
     validimg, validtext, testimg, testtext = [], [], [], []
 
@@ -97,6 +102,7 @@ if split:
     #pick some random files
     imagelist, txtlist = seperate_files(imgno*valid_ratio,validimg,validtext,imagelist,txtlist)
     imagelist, txtlist = seperate_files(imgno*test_ratio,testimg,testtext,imagelist,txtlist)
+    print(f"random files selected, {len(validimg)} validation images, {len(testimg)} testing images")
 
     # function to preserve symlinks of src file, otherwise default to copy
     def copy_link(src, dst):
@@ -118,11 +124,20 @@ if split:
         for i, item in enumerate(filelist):
             copy_link(item, output_path)
 
-    move_file(txtlist,save_dir_for_split,'labels/train')
-    move_file(imagelist,save_dir_for_split,'images/train')
-    move_file(validtext,save_dir_for_split,'labels/valid')
-    move_file(validimg,save_dir_for_split,'images/valid')
-    move_file(testtext,save_dir_for_split,'labels/test')
-    move_file(testimg,save_dir_for_split,'images/test')
+    move_file(txtlist,save_dir_for_split,'train/labels')
+    print("moved labels for train")
+    move_file(imagelist,save_dir_for_split,'train/images')
+    print("moved images for train")
+    move_file(validtext,save_dir_for_split,'valid/labels')
+    print("moved labels for valid")
+    move_file(validimg,save_dir_for_split,'valid/images')
+    print("moved images for valid")
+    move_file(testtext,save_dir_for_split,'test/labels')
+    print("moved labels for test")
+    move_file(testimg,save_dir_for_split,'test/images')
+    print("moved images for test")
 
     print("split complete")
+
+import code
+code.interact(local=dict(globals(), **locals()))

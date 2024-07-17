@@ -12,6 +12,7 @@ from PIL import Image
 from shapely.geometry import Polygon, box, MultiPolygon, GeometryCollection
 from shapely.validation import explain_validity
 
+#images in one folder, labels in another. Only want to do images with an ossociated label file
 
 classes = ["recruit_live_white", "recruit_cluster_live_white", "recruit_symbiotic", "recruit_symbiotic_cluster", "recruit_partial",
            "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown"]
@@ -43,8 +44,8 @@ TILE_HEIGHT = 640
 TRUNCATE_PERCENT = 0.1
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
 
-full_res_dir = '/home/java/Java/data/cgras_20230421/train'
-save_path = '/home/java/Java/data/cgras_20230421/tilling'
+full_res_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data'
+save_path = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/tilling1'
 save_train = os.path.join(save_path, 'train')
 save_img = os.path.join(save_train, 'images')
 save_labels = os.path.join(save_train, 'labels')
@@ -60,7 +61,7 @@ def is_mostly_contained(polygon, x_start, x_end, y_start, y_end, threshold):
     tile_box = box(x_start, y_start, x_end, y_end)
     if not polygon.is_valid:
         explanation = explain_validity(polygon)
-        print(f"Invalid Polygon: {explanation} at {x_start}_{y_start}")
+        #print(f"Invalid Polygon: {explanation} at {x_start}_{y_start}")
         return False
     if not polygon_box.intersects(tile_box):
         return False
@@ -122,7 +123,7 @@ def cut_annotation(x_start, x_end, y_start, y_end, lines, imgw, imgh):
 
 
 #cut the image
-def cut(img_name, save_img, test_name, save_labels, txt_name):
+def cut(img_name, save_img, test_name, save_labels, txt_name, img_no):
     """Cut a image into tiles, save the annotations renormalised"""
     pil_img = Image.open(img_name, mode='r')
     np_img = np.array(pil_img, dtype=np.uint8)
@@ -132,6 +133,7 @@ def cut(img_name, save_img, test_name, save_labels, txt_name):
     x_tiles = (imgw + TILE_WIDTH - TILE_OVERLAP - 1) // (TILE_WIDTH - TILE_OVERLAP)
     y_tiles = (imgh + TILE_HEIGHT - TILE_OVERLAP - 1) // (TILE_HEIGHT - TILE_OVERLAP)
     for x in range(x_tiles):
+        print(f"On image {i+1}, processing x_tile {x}/{x_tiles} and y_tile {y_tiles}")
         for y in range(y_tiles):
             x_end = min((x + 1) * TILE_WIDTH - TILE_OVERLAP * (x != 0), imgw)
             x_start = x_end - TILE_WIDTH
@@ -150,6 +152,7 @@ def cut(img_name, save_img, test_name, save_labels, txt_name):
             try:
                 writeline = cut_annotation(x_start, x_end, y_start, y_end, lines, imgw, imgh)
             except:
+                print("error in cut_annotations")
                 import code
                 code.interact(local=dict(globals(), **locals()))    
 
@@ -160,8 +163,8 @@ def cut(img_name, save_img, test_name, save_labels, txt_name):
             # import code
             # code.interact(local=dict(globals(), **locals()))        
 
-def visualise(imgname):
-    """Show all the annotations on to a set of cut images"""
+def visualise(imgname, save_path):
+    """Show all the annotations on to a set of cut images and save at save_path"""
     imglist = glob.glob(os.path.join(imgname, '*.jpg'))
     for i, imgname in enumerate(imglist):
         print(f'visulasing image {i+1}/{len(imglist)}')
@@ -195,6 +198,7 @@ def visualise(imgname):
         for idx in range(len(class_idx)):
             pointers = np.array(points[idx], np.int32).reshape(-1,2)
             cv.polylines(image, [pointers], True, class_colours[classes[class_idx[idx]]], 2)
+            cv.putText(image, classes[class_idx[idx]], (pointers[0][0], pointers[0][1]), cv.FONT_HERSHEY_SIMPLEX, 0.5, class_colours[classes[class_idx[idx]]], 2)
         imgsavename = os.path.basename(img_name)
         imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det.jpg')
         cv.imwrite(imgsave_path, image)
@@ -214,17 +218,19 @@ def visualise(imgname):
 # code.interact(local=dict(globals(), **locals())) 
 
 imglist = sorted(glob.glob(os.path.join(full_res_dir, 'images', '*.jpg')))
-# for i, img in enumerate(imglist):
-#     print(f'cutting image {i+1}/{len(imglist)}')
-#     # if i > 20:
-#     #     break
-#     #     import code
-#     #     code.interact(local=dict(globals(), **locals())) 
-#     name = os.path.basename(img)[:-4]
-#     img_name = os.path.join(full_res_dir,'images', name+'.jpg')
-#     txt_name = os.path.join(full_res_dir,'labels', name+'.txt')
-#     cut(img_name, save_img, name, save_labels, txt_name)
-
-visualise(save_img)
+for i, img in enumerate(imglist):
+    if i < 700: #757, 774 ##TODO had to skip these too
+        continue
+    name = os.path.basename(img)[:-4]
+    img_name = os.path.join(full_res_dir,'images', name+'.jpg')
+    txt_name = os.path.join(full_res_dir,'labels', name+'.txt')
+    if os.path.exists(txt_name):
+        print(f'cutting image {i+1}/{len(imglist)}')
+        cut(img_name, save_img, name, save_labels, txt_name, i)
+    else:
+        print("no text file for image")
+print("done")
+# vis_save_path = os.path.join(save_path, 'vis')
+# visualise(save_img, vis_save_path)
 import code
 code.interact(local=dict(globals(), **locals())) 
