@@ -28,7 +28,7 @@ base_img_location = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgr
 save_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/ultralytics_data_detections'
 base_file = "/home/java/Downloads/cgras20240716/annotations.xml"
 output_filename = "/home/java/Downloads/cgras_2024_1.xml"
-max_img = 10000
+max_img = 10
 single_image = False #run roboflow sahi on one image and get detected segmentation results
 visualise = True #visualise the detections on the images
 batch_height, batch_width = 3000, 3000
@@ -156,7 +156,6 @@ class Predict2Cvat:
     def batch_image(self, image_cv, batch_height, batch_width, image_height, image_width, slicer):
         data_dict = {'class_name': []}
         box_list, conf_list, cls_id_list, mask_list = [], [], [], []
-        whole_image_mask = np.zeros((image_height, image_width), dtype=bool)
         print("Batching image")
         for y in range(0, image_height, batch_height):
             for x in range(0, image_width, batch_width):
@@ -177,9 +176,10 @@ class Predict2Cvat:
                 for data in sliced_detections.data['class_name']:
                     data_dict['class_name'].append(data)
                 for mask in sliced_detections.mask:
-                    mask_resized = cv2.resize(mask.astype(np.uint8), (batch_width, batch_height))
-                    mask_list.append(mask_resized)
-                whole_image_mask[y:y_end, x:x_end] = 0
+                    mask_resized = cv2.resize(mask.astype(np.uint8), (x_end - x, y_end - y))
+                    full_image_mask = np.zeros((image_height, image_width), dtype=np.uint8)
+                    full_image_mask[y:y_end, x:x_end] = mask_resized
+                    mask_list.append(full_image_mask.copy())
         return box_list, conf_list, cls_id_list, mask_list, data_dict, sliced_detections
 
     def run(self):
@@ -190,9 +190,6 @@ class Predict2Cvat:
             if i>self.max_img:
                 print("Hit max img limit")
                 break
-            if i<6 or i>7:
-                print("skipping image, as already labeled")
-                continue
             image_id = image_element.get('id')
             image_name = image_element.get('name')
             image_width = int(image_element.get('width'))
@@ -204,6 +201,22 @@ class Predict2Cvat:
             new_elem.set('width', str(image_width))
             new_elem.set('height', str(image_height))
             
+            
+            if i<6 or i>6:
+                print("skipping image, as already labeled")
+                for mask in image_element.findall('.//mask'):
+                    mask_elem = SubElement(new_elem, 'mask')
+                    mask_elem.set('label', mask.get('label'))
+                    mask_elem.set('source', mask.get('source'))
+                    mask_elem.set('occluded', mask.get('occluded'))
+                    mask_elem.set('rle', mask.get('rle'))
+                    mask_elem.set('left', mask.get('left'))
+                    mask_elem.set('top', mask.get('top'))
+                    mask_elem.set('width', mask.get('width'))
+                    mask_elem.set('height', mask.get('height'))
+                    mask_elem.set('z_order', mask.get('z_order'))
+                continue
+
             image_file = os.path.join(self.img_location, image_name)
             image_cv = cv2.imread(image_file)
             image_height, image_width = image_cv.shape[:2]
@@ -213,12 +226,13 @@ class Predict2Cvat:
             mask_array = np.array(mask_list)
 
             if self.save_img:
-                print("stiching batch back together")
+                print("NOT FINISHED SAVE IMAGE")
                 cls_id_array = np.array(cls_id_list)
-                whole_image_detection = sv.Detections(xyxy=box_array, confidence=conf_array, class_id=cls_id_array, 
-                                                    mask=mask_array, data=data_dict)
-                annotated_image = mask_annotator.annotate(scene=image.copy(), detections=whole_image_detection)
-                cv2.imwrite(f"{os.path.join(self.save_dir,os.path.basename(image_file)[:-4])}_det.jpg", annotated_image)
+                #TODO write this to work, see visualise section
+                # whole_image_detection = sv.Detections(xyxy=box_array, confidence=conf_array, class_id=cls_id_array, 
+                #                                     mask=mask_array, data=data_dict)
+                # annotated_image = mask_annotator.annotate(scene=image.copy(), detections=whole_image_detection)
+                # cv2.imwrite(f"{os.path.join(self.save_dir,os.path.basename(image_file)[:-4])}_det.jpg", annotated_image)
 
             if conf_array is None:
                 print('No masks found in image',image_name)
@@ -228,26 +242,28 @@ class Predict2Cvat:
                 try:
                     xyxy = detection.tolist()
                     binary_mask = mask_array[j]
-                    binary_mask_resized = cv2.resize(binary_mask, (image_cv.shape[1], image_cv.shape[0]))
-                    rle = binary_mask_to_rle(binary_mask_resized) #<- NOTE error here probably?
-                    #rle starts with too big a number. Which I think is the source of the problem, but not sure why this error occurs or how to fix it or where specifically it comes from
+                    ## take small version of mask
+                    rows, cols = np.where(binary_mask == 1)
+                    top_left_y = rows.min()
+                    bottom_right_y = rows.max()
+                    top_left_x = cols.min()
+                    bottom_right_x = cols.max()
+                    box_width = bottom_right_x - top_left_x + 1
+                    box_height = bottom_right_y - top_left_y + 1
+                    sub_mask = binary_mask[top_left_y:bottom_right_y+1, top_left_x:bottom_right_x+1]
+                    rle = binary_mask_to_rle(sub_mask)
 
-                    # #Masks look reasonable from here
-                    # self.wip_vis(image_cv, binary_mask, image_file) #test binary masks detected
-                    # rle_to_binary_mask(rle, image_width, image_height, True)
                     rle_string = ', '.join(map(str, rle))
-                    left, top, width, height = min(xyxy[0], xyxy[2]), min(xyxy[1], xyxy[3]), abs(xyxy[0] - xyxy[2]), abs(xyxy[1] - xyxy[3])
                     label = data_dict['class_name'][j]
                     mask_elem = SubElement(new_elem, 'mask')
                     mask_elem.set('label', label)
                     mask_elem.set('source', 'semi-auto')
                     mask_elem.set('occluded', '0')
                     mask_elem.set('rle', rle_string)
-                    # #setting below to 0,0,image_width,image_height causes cvat to crash when trying to view the images
-                    mask_elem.set('left', str(int(left)))
-                    mask_elem.set('top', str(int(top)))
-                    mask_elem.set('width', str(int(width)))
-                    mask_elem.set('height', str(int(height)))
+                    mask_elem.set('left', str(int(top_left_x)))
+                    mask_elem.set('top', str(int(top_left_y)))
+                    mask_elem.set('width', str(int(box_width)))
+                    mask_elem.set('height', str(int(box_height)))
                     mask_elem.set('z_order', '0')
                 except:
                     print(f'detection {j} encountered problem')
@@ -265,19 +281,18 @@ class Predict2Cvat:
         print('XML file zipped')
 
 
-# print("Detecting corals and saving to annotation format")
-# Det = Predict2Cvat(base_img_location, output_filename, weight_file, base_file, save_img=False, max_img=max_img)
-# Det.run()
-# print("Done detecting corals")
+print("Detecting corals and saving to annotation format")
+Det = Predict2Cvat(base_img_location, output_filename, weight_file, base_file, save_img=False, max_img=max_img)
+Det.run()
+print("Done detecting corals")
 
-# import code
-# code.interact(local=dict(globals(), **locals()))
+import code
+code.interact(local=dict(globals(), **locals()))
 
 import cv2 as cv
 def save_image_predictions_mask(results, image, imgname, save_path, conf, class_list, classes, class_colours):
     """save_image_predictions_mask
-    saves the predicted masks results onto an image, recoring confidence and class as well. 
-    Can also show ground truth anotiations from the associated textfile (assumed annotiations are normalised xy corifinate points)
+    saves the predicted masks results onto an image and bbounding boxes, recoring confidence and class as well.
     """
     # ## to see image as 640 resolution
     # image = cv.imread(imgname)
@@ -289,18 +304,15 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
     font_thickness = 5#3*(abs(line_tickness-font_size))+font_size
     if results:
         for j, m in enumerate(results):
-            contours, _ = cv2.findContours(m[1], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours, _ = cv2.findContours(m[1], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) #haven't shifted masks?
             for contour in contours:
                 points = np.squeeze(contour)
-            cls = classes[int(class_list[j])]
-            desired_color = class_colours[cls]
-            if points is None or not points.any() or len(points) == 0:
-                print(f'mask {j} encountered problem with points {points}, class is {cls}')
-            else: 
-                cv.fillPoly(masked, [points], desired_color) #here the polygons are wrong
-                xmin = min(points[:, 1])
-                ymin = min(points[:, 0])
-                #cv.putText(image, f"{conf[j]:.2f}: {cls}", (int(xmin-20), int(ymin - 5)), cv.FONT_HERSHEY_SIMPLEX, font_size, desired_color, font_thickness)
+                cls = classes[int(class_list[j])]
+                desired_color = class_colours[cls]
+                if points is None or not points.any() or len(points) == 0:
+                    print(f'mask {j} encountered problem with points {points}, class is {cls}')
+                else: 
+                    cv.fillPoly(masked, [points], desired_color) #fixed!!!
         for t, b in enumerate(results.xyxy):
             cls = classes[int(class_list[t])]
             desired_color = class_colours[cls]
@@ -314,9 +326,6 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
     imgsavename = os.path.basename(imgname)
     imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det_mask.jpg')
     cv.imwrite(imgsave_path, semi_transparent_mask)
-    import code
-    code.interact(local=dict(globals(), **locals()))
-    
 
 ## Visualise Detections on images
 if visualise:
@@ -325,6 +334,8 @@ if visualise:
     imglist = sorted(glob.glob(os.path.join(base_img_location, '*.jpg')))
     for i, image_file in enumerate(imglist):
         print(f"processing image: {i+1} of {len(imglist)}")
+        if i<6:
+            continue
         if i>max_img:
             print("Hit max img limit")
             break
@@ -332,7 +343,7 @@ if visualise:
         image_height, image_width = image.shape[:2]
         data_dict = {'class_name': []}
         box_list, conf_list, cls_id_list, mask_list = [], [], [], []
-        whole_image_mask = np.zeros((image_height, image_width), dtype=bool)
+        #whole_image_mask = np.zeros((image_height, image_width), dtype=bool)
         print("Batching image")
         for y in range(0, image_height, batch_height):
             for x in range(0, image_width, batch_width):
@@ -353,18 +364,16 @@ if visualise:
                 for data in sliced_detections.data['class_name']:
                     data_dict['class_name'].append(data)
                 for mask in sliced_detections.mask:
-                    mask_resized = cv2.resize(mask.astype(np.uint8), (batch_width, batch_height))
-                    mask_list.append(mask_resized)
-                whole_image_mask[y:y_end, x:x_end] = 0
+                    mask_resized = cv2.resize(mask.astype(np.uint8), (x_end - x, y_end - y))
+                    full_image_mask = np.zeros((image_height, image_width), dtype=np.uint8)
+                    full_image_mask[y:y_end, x:x_end] = mask_resized
+                    mask_list.append(full_image_mask.copy())
         print("stiching batch back together")
         whole_image_detection = sv.Detections(xyxy=np.array(box_list), confidence=np.array(conf_list), class_id=np.array(cls_id_list), 
                                               mask=np.array(mask_list), data=data_dict)
         save_image_predictions_mask(whole_image_detection, image, image_file, save_dir, conf_list, cls_id_list, classes, class_colours)
-        import code
-        code.interact(local=dict(globals(), **locals()))
-        annotated_image = mask_annotator.annotate(scene=image.copy(), detections=whole_image_detection) #this takes long time (>1h)
-        #sv.plot_image(annotated_image) #visualise all the detections    
-        cv2.imwrite(f"{os.path.join(save_dir,os.path.basename(image_file)[:-4])}_det.jpg", annotated_image)
+        # import code
+        # code.interact(local=dict(globals(), **locals()))
 
 
 ### Single image check and test
