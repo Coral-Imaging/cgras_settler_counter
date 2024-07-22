@@ -28,10 +28,15 @@ base_img_location = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgr
 save_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/ultralytics_data_detections'
 base_file = "/home/java/Downloads/cgras20240716/annotations.xml"
 output_filename = "/home/java/Downloads/cgras_2024_1.xml"
-max_img = 10
+#list of images that have already been labeled
+labeled_images = [0, 1, 2, 3, 5, 100, 101, 102, 103, 104, 105, 106, 107, 108, 110, 112, 370, 371, 372, 373, 374, 375, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 
+                  391, 392, 393, 394, 395, 396, 397, 398, 399, 400, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 453, 454, 455, 456, 457, 458, 459, 460, 
+                  461, 462, 463, 464, 465, 466, 467, 468, 469, 470, 550, 551, 552, 553, 554, 555, 556, 558, 559, 560, 561, 562, 563, 564, 565, 566, 567, 568, 569, 570, 571,
+                  572, 573, 574, 575, 576, 577, 578, 579, 580, 700, 701, 702, 703, 704, 705, 706, 707, 708, 709, 710, 711, 712, 713, 714, 715, 716, 717, 718, 719, 720, 721,
+                  722, 723, 724, 750, 149, 650, 651, 652, 653, 658, 774] 
+max_img = 1000
 single_image = False #run roboflow sahi on one image and get detected segmentation results
 visualise = True #visualise the detections on the images
-batch_height, batch_width = 3000, 3000
 
 ## FUNCIONS
 #quicker then the version in Utils.py #TODO probably update one in utils
@@ -112,6 +117,7 @@ class Predict2Cvat:
     DEFAULT_WEIGHT_FILE = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt"
     DEFAULT_SAVE_DIR = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/ultralytics_data_detections"
     DEFAULT_MAX_IMG = 10000
+    DEFAULT_BATCH_SIZE = 3000
     
     def __init__(self, 
                  img_location: str, 
@@ -120,7 +126,10 @@ class Predict2Cvat:
                  base_file: str = BASE_FILE,
                  max_img: int = DEFAULT_MAX_IMG,
                  save_img: bool = False,
-                 save_dir: str = DEFAULT_SAVE_DIR):
+                 save_dir: str = DEFAULT_SAVE_DIR,
+                 batch_height: int = DEFAULT_BATCH_SIZE,
+                 batch_width: int = DEFAULT_BATCH_SIZE,
+                 label_img_no: list = None):
         self.img_location = img_location
         self.base_file = base_file
         self.output_file = output_file
@@ -129,11 +138,9 @@ class Predict2Cvat:
         self.max_img = max_img
         self.save_img = save_img
         self.save_dir = save_dir
-
-    def wip_vis(self, image_cv, binary_mask_resized, image_file):
-        overlay = np.zeros_like(image_cv, dtype=np.uint8)
-        overlay[binary_mask_resized == 1] = [0, 0, 255]
-        cv2.imwrite(f"{os.path.join(self.save_dir,os.path.basename(image_file)[:-4])}_det.jpg",overlay)
+        self.batch_height = batch_height
+        self.batch_width = batch_width
+        self.label_img_no = label_img_no
 
     def tree_setup(self):
         tree = ET.parse(self.base_file)
@@ -153,22 +160,16 @@ class Predict2Cvat:
         return new_tree, root
 
     #this is done so that the memory doesn't fill up straight away with the large images
-    def batch_image(self, image_cv, batch_height, batch_width, image_height, image_width, slicer):
+    def batch_image(self, image_cv, image_height, image_width, slicer):
         data_dict = {'class_name': []}
-        box_list, conf_list, cls_id_list, mask_list = [], [], [], []
+        conf_list, cls_id_list, mask_list = [], [], []
         print("Batching image")
-        for y in range(0, image_height, batch_height):
-            for x in range(0, image_width, batch_width):
-                y_end = min(y + batch_height, image_height)
-                x_end = min(x + batch_width, image_width)
+        for y in range(0, image_height, self.batch_height):
+            for x in range(0, image_width, self.batch_width):
+                y_end = min(y + self.batch_height, image_height)
+                x_end = min(x + self.batch_width, image_width)
                 img= image_cv[y:y_end, x:x_end]
                 sliced_detections = slicer(image=img)
-                for box in sliced_detections.xyxy:
-                    box[0] += x
-                    box[1] += y
-                    box[2] += x
-                    box[3] += y
-                    box_list.append(box)
                 for conf in sliced_detections.confidence:
                     conf_list.append(conf)
                 for cls_id in sliced_detections.class_id:
@@ -177,10 +178,18 @@ class Predict2Cvat:
                     data_dict['class_name'].append(data)
                 for mask in sliced_detections.mask:
                     mask_resized = cv2.resize(mask.astype(np.uint8), (x_end - x, y_end - y))
-                    full_image_mask = np.zeros((image_height, image_width), dtype=np.uint8)
-                    full_image_mask[y:y_end, x:x_end] = mask_resized
-                    mask_list.append(full_image_mask.copy())
-        return box_list, conf_list, cls_id_list, mask_list, data_dict, sliced_detections
+                    rows, cols = np.where(mask_resized == 1)
+                    if len(rows) > 0 and len(cols) > 0:
+                        top_left_y = rows.min()
+                        bottom_right_y = rows.max()
+                        top_left_x = cols.min()
+                        bottom_right_x = cols.max()
+                        box_width = bottom_right_x - top_left_x + 1
+                        box_height = bottom_right_y - top_left_y + 1
+                        sub_mask = mask_resized[top_left_y:bottom_right_y + 1, top_left_x:bottom_right_x + 1]
+                        mask_list.append((sub_mask, top_left_x + x, top_left_y + y, box_width, box_height))         
+        return conf_list, cls_id_list, mask_list, data_dict, sliced_detections
+
 
     def run(self):
         new_tree, root = self.tree_setup()
@@ -201,8 +210,7 @@ class Predict2Cvat:
             new_elem.set('width', str(image_width))
             new_elem.set('height', str(image_height))
             
-            
-            if i<6 or i>6:
+            if self.label_img_no is not None and i in self.label_img_no: #don't overwrite already labeled images
                 print("skipping image, as already labeled")
                 for mask in image_element.findall('.//mask'):
                     mask_elem = SubElement(new_elem, 'mask')
@@ -220,39 +228,22 @@ class Predict2Cvat:
             image_file = os.path.join(self.img_location, image_name)
             image_cv = cv2.imread(image_file)
             image_height, image_width = image_cv.shape[:2]
-            box_list, conf_list, cls_id_list, mask_list, data_dict, sliced_detections = self.batch_image(image_cv, batch_height, batch_width, image_height, image_width, slicer)
-            box_array = np.array(box_list)
+            conf_list, cls_id_list, mask_list, data_dict, sliced_detections = self.batch_image(image_cv, image_height, image_width, slicer)
             conf_array = np.array(conf_list)
-            mask_array = np.array(mask_list)
 
             if self.save_img:
-                print("NOT FINISHED SAVE IMAGE")
-                cls_id_array = np.array(cls_id_list)
-                #TODO write this to work, see visualise section
-                # whole_image_detection = sv.Detections(xyxy=box_array, confidence=conf_array, class_id=cls_id_array, 
-                #                                     mask=mask_array, data=data_dict)
-                # annotated_image = mask_annotator.annotate(scene=image.copy(), detections=whole_image_detection)
-                # cv2.imwrite(f"{os.path.join(self.save_dir,os.path.basename(image_file)[:-4])}_det.jpg", annotated_image)
+                print("Save img_not implemented")
+                #self.save_img(image_cv, conf_list, cls_id_list, mask_list, data_dict, sliced_detections)
 
             if conf_array is None:
                 print('No masks found in image',image_name)
                 continue
 
-            for j, detection in enumerate(box_array):
+            for j, detection in enumerate(conf_array):
                 try:
-                    xyxy = detection.tolist()
-                    binary_mask = mask_array[j]
-                    ## take small version of mask
-                    rows, cols = np.where(binary_mask == 1)
-                    top_left_y = rows.min()
-                    bottom_right_y = rows.max()
-                    top_left_x = cols.min()
-                    bottom_right_x = cols.max()
-                    box_width = bottom_right_x - top_left_x + 1
-                    box_height = bottom_right_y - top_left_y + 1
-                    sub_mask = binary_mask[top_left_y:bottom_right_y+1, top_left_x:bottom_right_x+1]
+                    sub_mask, top_left_x, top_left_y, box_width, box_height = mask_list[j]
                     rle = binary_mask_to_rle(sub_mask)
-
+                    #rle_to_binary_mask(rle, box_width, box_height, True) #check rle, works
                     rle_string = ', '.join(map(str, rle))
                     label = data_dict['class_name'][j]
                     mask_elem = SubElement(new_elem, 'mask')
@@ -273,7 +264,6 @@ class Predict2Cvat:
             new_tree.write(self.output_file, encoding='utf-8', xml_declaration=True) #save as progress incase of crash
             print(len(sliced_detections),'masks converted in image',image_name)
 
-
         new_tree.write(self.output_file, encoding='utf-8', xml_declaration=True)
         zip_filename = self.output_file.split('.')[0] + '.zip'
         with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -282,7 +272,7 @@ class Predict2Cvat:
 
 
 print("Detecting corals and saving to annotation format")
-Det = Predict2Cvat(base_img_location, output_filename, weight_file, base_file, save_img=False, max_img=max_img)
+Det = Predict2Cvat(base_img_location, output_filename, weight_file, base_file, save_img=False, max_img=max_img, label_img_no=labeled_images)
 Det.run()
 print("Done detecting corals")
 
@@ -326,6 +316,8 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
     imgsavename = os.path.basename(imgname)
     imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det_mask.jpg')
     cv.imwrite(imgsave_path, semi_transparent_mask)
+
+batch_height, batch_width = 3000, 3000
 
 ## Visualise Detections on images
 if visualise:
