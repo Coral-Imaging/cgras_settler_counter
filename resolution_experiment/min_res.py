@@ -31,7 +31,7 @@ import os
 from ultralytics import YOLO
 import torch
 import supervision as sv
-
+import numpy as np
 
 print('min_res.py')
 
@@ -51,7 +51,7 @@ mask_annotator = sv.MaskAnnotator()
 ###############################
 
 # location of image
-image_name = '/home/dorian/Code/cgras_ws/cgras_settler_counter/resolution_experiment/images/20230105_MIS1_RC_Aspat_T04_08_1280crop.jpg'
+image_name = '/home/dorian/Code/cgras_ws/cgras_settler_counter/resolution_experiment/images/20230116_MIS6_RC_Aspat_T09_08_640crop.jpg'
 base_name = os.path.basename(image_name)[:-4]
 
 # load image, get image dimensions
@@ -60,17 +60,18 @@ height, width, chan = image.shape
 ar = width/height # aspect ratio
 
 # import annotation(s) in yolov8 format for a mask
-label = '/home/dorian/Code/cgras_ws/cgras_settler_counter/resolution_experiment/labels/20230105_MIS1_RC_Aspat_T04_08_1280crop.txt'
+label = '/home/dorian/Code/cgras_ws/cgras_settler_counter/resolution_experiment/labels/2502-3-1-3-0-231201-1413_1280crop.txt'
 # NOTE: need to deal with cvat export issues
-
 
 # decide image resolution parameters
 # image resolution array for the largest dimension, needs to be a multiple of 32
-image_sizes = [1280, 640, 480, 320, 160]
-
+image_sizes = np.arange(640, 159, -32)
+# image_sizes = [640, 480, 320, 160]
 
 # loop over image sizes, resize and detect on each
 image_array = []
+avg_confidence = []
+
 for i in image_sizes:
     
     # resize image
@@ -84,8 +85,8 @@ for i in image_sizes:
     # cv.waitKey()
     
     # save image
-    save_file = out_dir+base_name+'_'+str(width_r)+'.jpg'
-    cv.imwrite(save_file,image_r)
+    # save_file = out_dir+base_name+'_'+str(width_r)+'.jpg'
+    # cv.imwrite(save_file,image_r)
     
     # do inference on images
     results = model(image_r) # need to specify input image size?
@@ -96,14 +97,32 @@ for i in image_sizes:
     
     # annotate
     label_annotator = sv.LabelAnnotator(text_padding=2,text_scale=0.25)
-    labels = [f"{model.model.names[class_id]} {detections.confidence[i]:.2f}" for i, class_id in enumerate(detections.class_id)]
+    labels = [f"{model.model.names[class_id]} {detections.confidence[i]:.3f}" for i, class_id in enumerate(detections.class_id)]
     annotated_image = label_annotator.annotate(scene=annotated_image, detections=detections, labels=labels)
     cv.imwrite(f"{os.path.join(out_dir,base_name)}_det_{width_r}.jpg", annotated_image)
     
     # get metric(s) on image (IoU)
+    
+    # temp: confidence
+    if len(detections.confidence) > 0:
+        avg_confidence.append(np.mean(detections.confidence))
+    else:
+        avg_confidence.append(0) 
+    
 
 
 # generate plot of metric vs res
+import matplotlib.pyplot as plt
+
+fig = plt.figure()
+plt.plot(image_sizes, avg_confidence)
+plt.title('avg confidence vs input image size')
+plt.xlabel('input image size')
+plt.ylabel('avg confidence score')
+plt.grid()
+fig.savefig(f"{os.path.join(out_dir,base_name)}_conf_plot.png")
+# plt.show()
+
 
 # NOTE: from 2022 dataset (100 images, all images used for training)
 import code
