@@ -23,11 +23,12 @@ import zipfile
 import torch
 from Utils import classes, class_colours
 
-weight_file = '/home/java/Java/ultralytics/runs/segment/train10/weights/best.pt'
+weight_file = '/home/java/Java/ultralytics/runs/segment/train10/weights/best.pt' #trained on labeled list 
+weight_file = '/home/java/Java/ultralytics/runs/segment/train12/weights/best.pt' #trained on labeled list with albmumentations
 base_img_location = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/images'
 save_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/ultralytics_data_detections'
 base_file = "/home/java/Downloads/cgras20240716/annotations.xml"
-output_filename = "/home/java/Downloads/cgras_2024_1.xml"
+output_filename = "/home/java/Downloads/cgras_2024_2.xml"
 #list of images that have already been labeled
 labeled_images = [0, 1, 2, 3, 5, 100, 101, 102, 103, 104, 105, 106, 107, 108, 110, 112, 370, 371, 372, 373, 374, 375, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 
                   391, 392, 393, 394, 395, 396, 397, 398, 399, 400, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 453, 454, 455, 456, 457, 458, 459, 460, 
@@ -136,7 +137,7 @@ class Predict2Cvat:
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.model = YOLO(weights_file).to(self.device)
         self.max_img = max_img
-        self.save_img = save_img
+        self.save = save_img
         self.save_dir = save_dir
         self.batch_height = batch_height
         self.batch_width = batch_width
@@ -162,7 +163,7 @@ class Predict2Cvat:
     #this is done so that the memory doesn't fill up straight away with the large images
     def batch_image(self, image_cv, image_height, image_width, slicer):
         data_dict = {'class_name': []}
-        conf_list, cls_id_list, mask_list = [], [], []
+        box_list, conf_list, cls_id_list, mask_list = [], [], [], []
         print("Batching image")
         for y in range(0, image_height, self.batch_height):
             for x in range(0, image_width, self.batch_width):
@@ -170,6 +171,15 @@ class Predict2Cvat:
                 x_end = min(x + self.batch_width, image_width)
                 img= image_cv[y:y_end, x:x_end]
                 sliced_detections = slicer(image=img)
+                if sliced_detections.confidence.size == 0:
+                    print("No detections found in batch")
+                    continue
+                for box in sliced_detections.xyxy:
+                    box[0] += x
+                    box[1] += y
+                    box[2] += x
+                    box[3] += y
+                    box_list.append(box)
                 for conf in sliced_detections.confidence:
                     conf_list.append(conf)
                 for cls_id in sliced_detections.class_id:
@@ -187,18 +197,116 @@ class Predict2Cvat:
                         box_width = bottom_right_x - top_left_x + 1
                         box_height = bottom_right_y - top_left_y + 1
                         sub_mask = mask_resized[top_left_y:bottom_right_y + 1, top_left_x:bottom_right_x + 1]
-                        mask_list.append((sub_mask, top_left_x + x, top_left_y + y, box_width, box_height))         
-        return conf_list, cls_id_list, mask_list, data_dict, sliced_detections
+                        mask_list.append((sub_mask, top_left_x + x, top_left_y + y, box_width, box_height))     
+        return box_list, conf_list, cls_id_list, mask_list, data_dict
 
+    def save_img(self, image_cv, box_array, conf_list, cls_id_list, mask_list, image_name):
+        height, width, _ = image_cv.shape
+        masked = image_cv.copy()
+        line_tickness = int(round(width)/600)
+        font_size = 2#int(round(line_tickness/2))
+        font_thickness = 5#3*(abs(line_tickness-font_size))+font_size
+        if conf_list is not None:
+            for j, m in enumerate(mask_list):
+                contours, _ = cv2.findContours(m[0], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
+                for contour in contours:
+                    points = np.squeeze(contour)
+                    if len(points.shape) == 1:
+                        points = points.reshape(-1, 1, 2)
+                    elif len(points.shape) == 2 and points.shape[1] != 2:
+                        points = points.reshape(-1, 1, 2)
+                    points += np.array([m[1], m[2]]) #shift the points to the correct location
+                    cls = classes[int(cls_id_list[j])]
+                    desired_color = class_colours[cls]
+                    if points is None or not points.any() or len(points) == 0:
+                        print(f'mask {j} encountered problem with points {points}, class is {cls}')
+                    else: 
+                        cv2.fillPoly(masked, [points], desired_color) 
+            for t, b in enumerate(box_array):
+                cls = classes[int(cls_id_list[t])]
+                desired_color = class_colours[cls]
+                cv2.rectangle(image_cv, (int(b[0]), int(b[1])), (int(b[2]), int(b[3])), tuple(class_colours[cls]), line_tickness)
+                cv2.putText(image_cv, f"{conf_list[t]:.2f}: {cls}", (int(b[0]-20), int(b[1] - 5)), cv2.FONT_HERSHEY_SIMPLEX, font_size, desired_color, font_thickness)
+        else:
+            print(f'No masks found in {image_name}')
+        alpha = 0.5
+        semi_transparent_mask = cv2.addWeighted(image_cv, 1-alpha, masked, alpha, 0)
+        imgsavename = os.path.basename(image_name)
+        imgsave_path = os.path.join(self.save_dir, imgsavename[:-4] + '_det_masknbox.jpg')
+        cv2.imwrite(imgsave_path, semi_transparent_mask)
+
+    def display_txt_on_img(self, txt_name):
+        img_folder = self.img_location
+        imgbasename = os.path.basename(txt_name)[:-17]
+        imgname = os.path.join(img_folder, imgbasename + '.jpg')
+        image = cv2.imread(imgname)
+        height, width, _ = image.shape
+
+        with open(txt_name, "r") as file:
+            lines = file.readlines()
+            for line in lines:
+                data = line.strip().split()
+                class_idx = int(data[0])
+                conf = float(data[-1])
+                points_normalised = [float(val) for val in data[1:-1]]
+                try:
+                    points = np.array(points_normalised).reshape(-1, 1, 2)
+                    points[:, 0, 0] *= width
+                    points[:, 0, 1] *= height
+                    points = points.astype(int)
+                    cv2.polylines(image, [points], True, class_colours[classes[class_idx]], 2)
+                    cv2.putText(image, f"{conf:.2f}: {classes[class_idx]}", (points[0, 0, 0]-20, points[0, 0, 1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 1, class_colours[classes[class_idx]], 2)
+                except:
+                    print("Error in line with length", len(line))
+                    continue
+        cv2.imwrite(os.path.join(self.save_dir, imgbasename + '_revis.jpg'), image)
+
+    def save_text(self, image_name, image_width, image_height, conf_list, cls_id_list, mask_list):
+        masks = mask_list
+        txt_results = []
+        for i, r in enumerate(masks):
+            txt_result1 = [int(cls_id_list[i])]
+            contours, _ = cv2.findContours(r[0], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
+            for contour in contours:
+                if contour.shape == (1, 1, 2):
+                    continue
+                points = np.squeeze(contour)
+                if len(points.shape) == 1:
+                    points = points.reshape(-1, 1, 2)
+                elif len(points.shape) == 2 and points.shape[1] != 2:
+                    points = points.reshape(-1, 1, 2)
+                points += np.array([r[1], r[2]]) #shift the points to the correct location
+                #normalise points
+                normalized_points = points.astype(float) 
+                try:
+                    normalized_points[:, 0] /= image_width    
+                    normalized_points[:, 1] /= image_height
+                    normalized_points = normalized_points.flatten()
+                    for point in normalized_points:
+                        txt_result1.append(point)
+                except:
+                    print("Error in normalising points")
+                    continue
+                txt_result1.append(conf_list[i])
+                txt_results.append(txt_result1)
+        imgsavename = os.path.basename(image_name)
+        imgsave_path = os.path.join(self.save_dir, imgsavename[:-4] + '_det_masknbox.txt')
+        with open(imgsave_path, 'w') as file:
+            for txt_result in txt_results:
+                for item in txt_result:
+                    file.write(str(item) + ' ')
+                file.write('\n')
 
     def run(self):
         new_tree, root = self.tree_setup()
 
         for i, image_element in enumerate(root.findall('.//image')):
-            print(i+1,'images being processed')
+            print(i,'images being processed')
             if i>self.max_img:
                 print("Hit max img limit")
                 break
+            img_start_time = time.time()
+
             image_id = image_element.get('id')
             image_name = image_element.get('name')
             image_width = int(image_element.get('width'))
@@ -210,7 +318,7 @@ class Predict2Cvat:
             new_elem.set('width', str(image_width))
             new_elem.set('height', str(image_height))
             
-            if self.label_img_no is not None and i in self.label_img_no: #don't overwrite already labeled images
+            if (self.label_img_no is not None and i in self.label_img_no) or (i<65 and i<49): #don't overwrite already labeled images
                 print("skipping image, as already labeled")
                 for mask in image_element.findall('.//mask'):
                     mask_elem = SubElement(new_elem, 'mask')
@@ -228,12 +336,13 @@ class Predict2Cvat:
             image_file = os.path.join(self.img_location, image_name)
             image_cv = cv2.imread(image_file)
             image_height, image_width = image_cv.shape[:2]
-            conf_list, cls_id_list, mask_list, data_dict, sliced_detections = self.batch_image(image_cv, image_height, image_width, slicer)
+            box_list, conf_list, cls_id_list, mask_list, data_dict = self.batch_image(image_cv, image_height, image_width, slicer)
             conf_array = np.array(conf_list)
+            box_array = np.array(box_list)
 
-            if self.save_img:
-                print("Save img_not implemented")
-                #self.save_img(image_cv, conf_list, cls_id_list, mask_list, data_dict, sliced_detections)
+            if self.save:
+                self.save_img(image_cv, box_array, conf_list, cls_id_list, mask_list, image_name)
+                self.save_text(image_name, image_width, image_height, conf_list, cls_id_list, mask_list)
 
             if conf_array is None:
                 print('No masks found in image',image_name)
@@ -262,7 +371,9 @@ class Predict2Cvat:
                     code.interact(local=dict(globals(), **locals()))
             
             new_tree.write(self.output_file, encoding='utf-8', xml_declaration=True) #save as progress incase of crash
-            print(len(sliced_detections),'masks converted in image',image_name)
+            print(len(conf_list),'masks converted in image',image_name, "number", i)
+            img_end_time = time.time()
+            print('Image run time: {} sec'.format(img_end_time - img_start_time))
 
         new_tree.write(self.output_file, encoding='utf-8', xml_declaration=True)
         zip_filename = self.output_file.split('.')[0] + '.zip'
@@ -271,51 +382,49 @@ class Predict2Cvat:
         print('XML file zipped')
 
 
-print("Detecting corals and saving to annotation format")
-Det = Predict2Cvat(base_img_location, output_filename, weight_file, base_file, save_img=False, max_img=max_img, label_img_no=labeled_images)
-Det.run()
-print("Done detecting corals")
+# print("Detecting corals and saving to annotation format")
+# Det = Predict2Cvat(base_img_location, output_filename, weight_file, base_file, save_img=True, max_img=max_img, label_img_no=labeled_images)
+# Det.run()
+# print("Done detecting corals")
 
-import code
-code.interact(local=dict(globals(), **locals()))
+# import code
+# code.interact(local=dict(globals(), **locals()))
 
-import cv2 as cv
-def save_image_predictions_mask(results, image, imgname, save_path, conf, class_list, classes, class_colours):
-    """save_image_predictions_mask
-    saves the predicted masks results onto an image and bbounding boxes, recoring confidence and class as well.
-    """
-    # ## to see image as 640 resolution
-    # image = cv.imread(imgname)
-    # image = cv.resize(image, (640, 488))
-    height, width, _ = image.shape
-    masked = image.copy()
+
+def save_img(image_cv, box_array, conf_list, cls_id_list, mask_list, image_name, save_dir):
+    height, width, _ = image_cv.shape
+    masked = image_cv.copy()
     line_tickness = int(round(width)/600)
     font_size = 2#int(round(line_tickness/2))
     font_thickness = 5#3*(abs(line_tickness-font_size))+font_size
-    if results:
-        for j, m in enumerate(results):
-            contours, _ = cv2.findContours(m[1], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) #haven't shifted masks?
+    if conf_list is not None:
+        for j, m in enumerate(mask_list):
+            contours, _ = cv2.findContours(m[0], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
             for contour in contours:
                 points = np.squeeze(contour)
-                cls = classes[int(class_list[j])]
+                if len(points.shape) == 1:
+                    points = points.reshape(-1, 1, 2)
+                elif len(points.shape) == 2 and points.shape[1] != 2:
+                    points = points.reshape(-1, 1, 2)
+                points += np.array([m[1], m[2]]) #shift the points to the correct location
+                cls = classes[int(cls_id_list[j])]
                 desired_color = class_colours[cls]
                 if points is None or not points.any() or len(points) == 0:
                     print(f'mask {j} encountered problem with points {points}, class is {cls}')
                 else: 
-                    cv.fillPoly(masked, [points], desired_color) #fixed!!!
-        for t, b in enumerate(results.xyxy):
-            cls = classes[int(class_list[t])]
+                    cv2.fillPoly(masked, [points], desired_color) 
+        for t, b in enumerate(box_array):
+            cls = classes[int(cls_id_list[t])]
             desired_color = class_colours[cls]
-            cv2.rectangle(image, (int(b[0]), int(b[1])), (int(b[2]), int(b[3])), tuple(class_colours[cls]), line_tickness)
-            cv.putText(image, f"{conf[t]:.2f}: {cls}", (int(b[0]-20), int(b[1] - 5)), cv.FONT_HERSHEY_SIMPLEX, font_size, desired_color, font_thickness)
+            cv2.putText(image_cv, f"{conf_list[t]:.2f}: {cls}", (int(b[0]-20), int(b[1] - 5)), cv2.FONT_HERSHEY_SIMPLEX, font_size, desired_color, font_thickness)
     else:
-        print(f'No masks found in {imgname}')
-
+        print(f'No masks found in {image_name}')
     alpha = 0.5
-    semi_transparent_mask = cv.addWeighted(image, 1-alpha, masked, alpha, 0)
-    imgsavename = os.path.basename(imgname)
-    imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det_mask.jpg')
-    cv.imwrite(imgsave_path, semi_transparent_mask)
+    semi_transparent_mask = cv2.addWeighted(image_cv, 1-alpha, masked, alpha, 0)
+    imgsavename = os.path.basename(image_name)
+    imgsave_path = os.path.join(save_dir, imgsavename[:-4] + '_det_mask.jpg')
+    cv2.imwrite(imgsave_path, semi_transparent_mask)
+
 
 batch_height, batch_width = 3000, 3000
 
@@ -326,7 +435,7 @@ if visualise:
     imglist = sorted(glob.glob(os.path.join(base_img_location, '*.jpg')))
     for i, image_file in enumerate(imglist):
         print(f"processing image: {i+1} of {len(imglist)}")
-        if i<6:
+        if i<109:
             continue
         if i>max_img:
             print("Hit max img limit")
@@ -335,7 +444,6 @@ if visualise:
         image_height, image_width = image.shape[:2]
         data_dict = {'class_name': []}
         box_list, conf_list, cls_id_list, mask_list = [], [], [], []
-        #whole_image_mask = np.zeros((image_height, image_width), dtype=bool)
         print("Batching image")
         for y in range(0, image_height, batch_height):
             for x in range(0, image_width, batch_width):
@@ -357,15 +465,21 @@ if visualise:
                     data_dict['class_name'].append(data)
                 for mask in sliced_detections.mask:
                     mask_resized = cv2.resize(mask.astype(np.uint8), (x_end - x, y_end - y))
-                    full_image_mask = np.zeros((image_height, image_width), dtype=np.uint8)
-                    full_image_mask[y:y_end, x:x_end] = mask_resized
-                    mask_list.append(full_image_mask.copy())
-        print("stiching batch back together")
-        whole_image_detection = sv.Detections(xyxy=np.array(box_list), confidence=np.array(conf_list), class_id=np.array(cls_id_list), 
-                                              mask=np.array(mask_list), data=data_dict)
-        save_image_predictions_mask(whole_image_detection, image, image_file, save_dir, conf_list, cls_id_list, classes, class_colours)
-        # import code
-        # code.interact(local=dict(globals(), **locals()))
+                    rows, cols = np.where(mask_resized == 1)
+                    if len(rows) > 0 and len(cols) > 0:
+                        top_left_y = rows.min()
+                        bottom_right_y = rows.max()
+                        top_left_x = cols.min()
+                        bottom_right_x = cols.max()
+                        box_width = bottom_right_x - top_left_x + 1
+                        box_height = bottom_right_y - top_left_y + 1
+                        sub_mask = mask_resized[top_left_y:bottom_right_y + 1, top_left_x:bottom_right_x + 1]
+                        mask_list.append((sub_mask, top_left_x + x, top_left_y + y, box_width, box_height))   
+        conf_array = np.array(conf_list)
+        box_array = np.array(box_list)
+        save_img(image, box_array, conf_list, cls_id_list, mask_list, os.path.basename(image_file), save_dir)
+        import code
+        code.interact(local=dict(globals(), **locals()))
 
 
 ### Single image check and test
