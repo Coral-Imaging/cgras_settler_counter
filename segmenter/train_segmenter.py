@@ -22,7 +22,7 @@ model = YOLO('/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolo
 
 # classes arg is lightweight and simply ignore classes that are not included in the classes list, 
 # during train, val and predict, it has no effect on model architecture.
-model.train(data=data_file, epochs=300, batch=-1) #test run
+model.train(data=data_file, epochs=500, batch=-1) #test run
 #model.train(data=data_file, epochs=100, batch=1, classes=[0,1,6,7,9,10], imgsz=1280, nbs=12)
 
 # print('Model Inference:')

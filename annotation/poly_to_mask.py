@@ -41,9 +41,9 @@ def rle_to_binary_mask(rle_list,
     current_pixel = 0
     total_pixels = width * height
 
-    if not validate_rle(rle_list, width, height):
-        import code
-        code.interact(local=dict(globals(), **locals()))
+    # if not validate_rle(rle_list, width, height):
+    #     import code
+    #     code.interact(local=dict(globals(), **locals()))
 
     for i in range(0, len(rle_list)):
         run_length = int(rle_list[i]) #find the length of current 0 or 1 run
@@ -280,7 +280,7 @@ def test_rle_to_mask(source_file: str):
 def main():
    #polyxml_to_maskxml(source_file='/home/java/Downloads/cgras_20231028/annotations.xml', output_filename='cgras_20231028_masks.xml', SHOW_IMAGE=False)
    #TODO Add auto extract from file
-    maskxml_to_polyxml(source_file='/home/java/Downloads/cgras20240716/annotations.xml', output_filename='/home/java/Downloads/cgras_pologons_20240716.xml')
+    maskxml_to_polyxml(source_file='/home/java/Downloads/cgras_iteration2/cgras_iteration2.xml', output_filename='/home/java/Downloads/cgras_iteration2/polygons.xml')
 
 def calculate_area(points):
     x_coords = points[0::2]
@@ -315,7 +315,7 @@ def adjust_polygons(polygons, left, top):
 
 
 def cvat_to_coco():
-    #experimenting of cvat polypoints to coco format.
+    #experimenting of cvat polypoints to coco format. NOT working yet
     img_width = 5304
     img_height = 7952
 
@@ -356,5 +356,5 @@ def cvat_to_coco():
     
 
 if __name__ == "__main__":
-    #main()
-    cvat_to_coco()
+    main()
+    #cvat_to_coco()
