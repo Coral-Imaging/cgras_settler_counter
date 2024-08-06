@@ -4,9 +4,6 @@
     This script is used to convert a COCO dataset to YOLO format.
 """
 
-###IMPORTANT NOTE: the split and fill_in code, may have directories slightly wrong, as I've moved things around a bit and coded these sections
-### by themselves. Not yet sutible to run without some changes (currently do it section by section, changing directories as needed)
-
 from ultralytics.data.converter import convert_coco
 import os
 import zipfile
@@ -14,16 +11,19 @@ import shutil
 import glob
 import random
 
+##TODO Fix code to make sure stuff doesn't get miss labeled in converstion
+# currently coco top list of classes, does not match order of classes in yolo or cvat
+# fix would be reading all labels and changing, or updating yaml file to match order of classes in coco (and utils and code list of classes)
+
 #export from CVAT as COCO1.1
 #comes in as ziped file with annotations/instances_default.json
-file_name = 'cgras_20240716_coco.zip' #'cgras_coco.zip'
+file_name = 'cgras_iteration2_coco.zip' #'cgras_coco.zip'
 save_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cvat_labels'
 download_dir = '/home/java/Downloads'
 #data_locaton = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data' #location of /images folder
-data_locaton = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/tilling1/train'
+data_locaton = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/tilling2/'
 convert = False
-split = True #got to get images in dir before split
-save_dir_for_split = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_split_n_tilled' #assume images in same folder as labels
+label_fix = False #true if coco has different order of classes
 fill_in = False #if want to fill in blank text files
 
 if convert:
@@ -49,6 +49,39 @@ if convert:
             shutil.move(source, destination)
     shutil.rmtree(save_dir) #tidy up
 
+    print("conversion complete")
+    import code
+    code.interact(local=dict(globals(), **locals()))
+
+if label_fix:
+    for i, label in enumerate(glob.glob(os.path.join(data_locaton, 'labels', '*.txt'))):
+        print("processing label: ", label)
+        if i<=2:
+            continue
+        with open(label, 'r') as file:
+            data = file.readlines()
+        with open(label, 'w') as file:
+            for line in data:
+                line = line.split()
+                if line[0] == '3':
+                    line[0] = '4'
+                elif line[0] == '4':
+                    line[0] = '5'
+                elif line[0] == '5':
+                    line[0] = '6'
+                elif line[0] == '6':
+                    line[0] = '7'
+                elif line[0] == '7':
+                    line[0] = '8'
+                elif line[0] == '8':
+                    line[0] = '9'
+                elif line[0] == '9':
+                    line[0] = '10'
+                elif line[0] == '10':
+                    line[0] = '3'
+                line[0] = str(int(line[0]))
+                file.write(' '.join(line)+'\n')
+    print("label fix complete")
     import code
     code.interact(local=dict(globals(), **locals()))
 
@@ -66,78 +99,6 @@ if fill_in:
             pass
     print ("blank text files added")
 
-#if want to split train, val, test data
-if split:
-    os.makedirs(save_dir_for_split, exist_ok=True)
-    train_ratio = 0.85
-    test_ratio = 0
-    valid_ratio = 0.15
-    def check_ratio(test_ratio,train_ratio,valid_ratio):
-        if(test_ratio>1 or test_ratio<0): ValueError(test_ratio,f'test_ratio must be > 1 and test_ratio < 0, test_ratio={test_ratio}')
-        if(train_ratio>1 or train_ratio<0): ValueError(train_ratio,f'train_ratio must be > 1 and train_ratio < 0, train_ratio={train_ratio}')
-        if(valid_ratio>1 or valid_ratio<0): ValueError(valid_ratio,f'valid_ratio must be > 1 and valid_ratio < 0, valid_ratio={valid_ratio}')
-        if not((train_ratio+test_ratio+valid_ratio)==1): ValueError("sum of train/val/test ratio must equal 1")
-    check_ratio(test_ratio,train_ratio,valid_ratio)
-
-    imagelist = glob.glob(os.path.join(data_locaton,'images', '*.jpg'))
-    txtlist = glob.glob(os.path.join(data_locaton, 'labels', '*.txt'))
-    txtlist.sort()
-    imagelist.sort()
-    imgno = len(txtlist) 
-    noleft = imgno
-    print(f"processing {len(imagelist)}")
-
-    validimg, validtext, testimg, testtext = [], [], [], []
-
-    # function to seperate files into different lists randomly while retaining the same .txt and .jpg name in the specific type of list
-    def seperate_files(number,newimglist,newtxtlist,oldimglist,oldtxtlist):
-        for i in range(int(number)):
-            r = random.randint(0, len(oldtxtlist) - 1)
-            newimglist.append(oldimglist[r])
-            newtxtlist.append(oldtxtlist[r])
-            oldimglist.remove(oldimglist[r])
-            oldtxtlist.remove(oldtxtlist[r])
-        return oldimglist, oldtxtlist
-
-    #pick some random files
-    imagelist, txtlist = seperate_files(imgno*valid_ratio,validimg,validtext,imagelist,txtlist)
-    imagelist, txtlist = seperate_files(imgno*test_ratio,testimg,testtext,imagelist,txtlist)
-    print(f"random files selected, {len(validimg)} validation images, {len(testimg)} testing images")
-
-    # function to preserve symlinks of src file, otherwise default to copy
-    def copy_link(src, dst):
-        if os.path.islink(src):
-            linkto = os.readlink(src)
-            os.symlink(linkto, os.path.join(dst, os.path.basename(src)))
-        else:
-            shutil.copy(src, dst)
-    # function to make sure the directory is empty
-    def clean_dirctory(savepath):
-        if os.path.isdir(savepath):
-            shutil.rmtree(savepath)
-        os.makedirs(savepath, exist_ok=True)
-    # function to move a list of files, by cleaning the path and copying and preserving symlinks
-    def move_file(filelist,savepath,second_path):
-        output_path = os.path.join(savepath, second_path)
-        #clean_dirctory(output_path)
-        os.makedirs(output_path, exist_ok=True)
-        for i, item in enumerate(filelist):
-            copy_link(item, output_path)
-
-    move_file(txtlist,save_dir_for_split,'train/labels')
-    print("moved labels for train")
-    move_file(imagelist,save_dir_for_split,'train/images')
-    print("moved images for train")
-    move_file(validtext,save_dir_for_split,'valid/labels')
-    print("moved labels for valid")
-    move_file(validimg,save_dir_for_split,'valid/images')
-    print("moved images for valid")
-    move_file(testtext,save_dir_for_split,'test/labels')
-    print("moved labels for test")
-    move_file(testimg,save_dir_for_split,'test/images')
-    print("moved images for test")
-
-    print("split complete")
 
 import code
 code.interact(local=dict(globals(), **locals()))

@@ -45,7 +45,7 @@ TRUNCATE_PERCENT = 0.1
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
 
 full_res_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data'
-save_path = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/tilling1'
+save_path = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/tilling2'
 save_train = os.path.join(save_path, 'train')
 save_img = os.path.join(save_train, 'images')
 save_labels = os.path.join(save_train, 'labels')
@@ -205,21 +205,9 @@ def visualise(imgname, save_path):
         # import code
         # code.interact(local=dict(globals(), **locals()))
 
-# ######### With one image #############
-# test_name = '00_20230116_MIS1_RC_Aspat_T04_08'
-# img_name = os.path.join(full_res_dir,'images', test_name+'.jpg')
-# txt_name = os.path.join(full_res_dir,'labels', test_name+'.txt')
-# cut(img_name, save_img, test_name, save_labels)
-# print("done cutting test image")
-
-# visualise(save_img)
-# print("done visualise")
-# import code
-# code.interact(local=dict(globals(), **locals())) 
-
 imglist = sorted(glob.glob(os.path.join(full_res_dir, 'images', '*.jpg')))
 for i, img in enumerate(imglist):
-    if i < 700: #757, 774 ##TODO had to skip these too
+    if i < 656: #757, 774 ##TODO had to skip these too
         continue
     name = os.path.basename(img)[:-4]
     img_name = os.path.join(full_res_dir,'images', name+'.jpg')
@@ -234,3 +222,15 @@ print("done")
 # visualise(save_img, vis_save_path)
 import code
 code.interact(local=dict(globals(), **locals())) 
+
+# ######### With one image #############
+# test_name = '00_20230116_MIS1_RC_Aspat_T04_08'
+# img_name = os.path.join(full_res_dir,'images', test_name+'.jpg')
+# txt_name = os.path.join(full_res_dir,'labels', test_name+'.txt')
+# cut(img_name, save_img, test_name, save_labels)
+# print("done cutting test image")
+
+# visualise(save_img)
+# print("done visualise")
+# import code
+# code.interact(local=dict(globals(), **locals())) 

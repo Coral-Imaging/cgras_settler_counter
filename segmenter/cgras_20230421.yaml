@@ -9,13 +9,15 @@
 
 # Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
 # path: /home/dorian/Data/cgras_datasets/cgras_dataset_20230421/
-path: /media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_split_n_tilled/
+path: /media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/240805_split_n_tilled/
 train: 
- - train
+ - train_0
+ - train_1
+ - train_2
 val:   # val images (relative to 'path') 
  - valid
 test:  # test images (optional)
- - train
+ - train_0
 # Classes
 names:
   0: recruit_live_white
