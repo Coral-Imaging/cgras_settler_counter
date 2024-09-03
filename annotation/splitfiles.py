@@ -11,13 +11,13 @@ import glob
 import random
 
 
-data_locaton = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/tilling2/'
-save_dir_for_split = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/240805_split_n_tilled' 
+data_locaton = '/media/java/cslics_ssd1/SCU_Pdae_Data/all_jpg'
+save_dir_for_split = '/media/java/cslics_ssd1/SCU_Pdae_Data/split_n_tilled' 
 
 #if want to split train, val, test data
 os.makedirs(save_dir_for_split, exist_ok=True)
-train_ratio = 0.85
-test_ratio = 0
+train_ratio = 0.70
+test_ratio = 0.15
 valid_ratio = 0.15
 def check_ratio(test_ratio,train_ratio,valid_ratio):
     if(test_ratio>1 or test_ratio<0): ValueError(test_ratio,f'test_ratio must be > 1 and test_ratio < 0, test_ratio={test_ratio}')
@@ -26,8 +26,8 @@ def check_ratio(test_ratio,train_ratio,valid_ratio):
     if not((train_ratio+test_ratio+valid_ratio)==1): ValueError("sum of train/val/test ratio must equal 1")
 check_ratio(test_ratio,train_ratio,valid_ratio)
 
-imagelist = glob.glob(os.path.join(data_locaton, '*/images', '*.jpg'))
-txtlist = glob.glob(os.path.join(data_locaton, '*/labels', '*.txt'))
+imagelist = glob.glob(os.path.join(data_locaton+'/images', '*.jpg'))
+txtlist = glob.glob(os.path.join(data_locaton+'/labels', '*.txt'))
 txtlist.sort()
 imagelist.sort()
 imgno = len(txtlist) 
