@@ -26,6 +26,7 @@ label_path = '/media/java/cslics_ssd1/SCU_Pdae_Data/ROIs Extracted'
 imgsave_path = '/media/java/cslics_ssd1/SCU_Pdae_Data/annotated'
 img_list = sorted(glob.glob(os.path.join(img_path, '*.jpg')))
 want_box = False
+SAVE = True #save image cut up with annotations label
 
 def contained_within(box1, box2):
     """Check if box1 is contained within box2"""
@@ -74,6 +75,11 @@ for i, image_element in enumerate(root.findall('.//image')):
     true_label_name = image_name.split('_')[0]+'_ROI_Extract.csv'
     if image_name.split('_')[0][-1] == ' ' and image_name.split('_')[0].split(' ')[0] == 'T6':
         true_label_name = image_name.split('_')[0][:-1]+'_ROI_Extract.csv'
+    if image_name.split('_')[0].split(' ')[0] != 'T3':
+        print(f"Skipping {image_name}")
+        continue
+    cvimg = cv.imread(image_file)
+    masked = cvimg.copy()
 
     labels = os.path.join(label_path, im_folder, true_label_name)
     try:
@@ -83,6 +89,7 @@ for i, image_element in enumerate(root.findall('.//image')):
         import code
         code.interact(local={**locals(), **globals()})
 
+    masks_in = 0
     for index, row in df.iterrows():
         id = row['name']
         type = row['type']
@@ -100,6 +107,7 @@ for i, image_element in enumerate(root.findall('.//image')):
 
         if not contained_within((left, top, right, bottom), (image_left, image_upper, image_right, image_lower)):
             continue
+        masks_in += 1
         cords = []
         try:
             for i in subpixel_coordinates.split('\n'):
@@ -124,6 +132,10 @@ for i, image_element in enumerate(root.findall('.//image')):
         # create new polygon element in new XML
         points = np.array(cords, np.int32).reshape(-1,2)
         shifted_points = points - [image_left, image_upper]
+        
+        if SAVE:
+            desired_color = (0, 255, 0)
+            cv.fillPoly(masked, [shifted_points], desired_color)
         rle, rleft, rtop, rwidth, rheight = poly_2_rle(shifted_points, ", ", False)
         mask_elem = SubElement(new_elem, 'mask')
         mask_elem.set('label', class_name)
@@ -134,7 +146,14 @@ for i, image_element in enumerate(root.findall('.//image')):
         mask_elem.set('top', str(rtop))
         mask_elem.set('width', str(rwidth))
         mask_elem.set('height', str(rheight))
-        mask_elem.set('z_order', '0')
+        mask_elem.set('z_order', '0')  
+    if SAVE:
+        alpha = 0.5
+        semi_transparent_mask = cv.addWeighted(cvimg, 1-alpha, masked, alpha, 0)
+        imgsavename = os.path.join(imgsave_path, image_name)    
+        cv.imwrite(imgsavename, semi_transparent_mask)
+        
+
 new_tree.write(output_filename, encoding='utf-8', xml_declaration=True)
 
 

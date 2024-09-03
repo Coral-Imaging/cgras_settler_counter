@@ -12,7 +12,10 @@ from PIL import Image
 from shapely.geometry import Polygon, box, MultiPolygon, GeometryCollection
 from shapely.validation import explain_validity
 
+full_res_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data'
+save_path = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/tilling3'
 #images in one folder, labels in another. Only want to do images with an ossociated label file
+imglist = sorted(glob.glob(os.path.join(full_res_dir, 'images', '*.jpg')))
 
 classes = ["recruit_live_white", "recruit_cluster_live_white", "recruit_symbiotic", "recruit_symbiotic_cluster", "recruit_partial",
            "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown"]
@@ -44,8 +47,7 @@ TILE_HEIGHT = 640
 TRUNCATE_PERCENT = 0.1
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
 
-full_res_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data'
-save_path = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/tilling2'
+
 save_train = os.path.join(save_path, 'train')
 save_img = os.path.join(save_train, 'images')
 save_labels = os.path.join(save_train, 'labels')
@@ -205,10 +207,8 @@ def visualise(imgname, save_path):
         # import code
         # code.interact(local=dict(globals(), **locals()))
 
-imglist = sorted(glob.glob(os.path.join(full_res_dir, 'images', '*.jpg')))
+
 for i, img in enumerate(imglist):
-    if i < 656: #757, 774 ##TODO had to skip these too
-        continue
     name = os.path.basename(img)[:-4]
     img_name = os.path.join(full_res_dir,'images', name+'.jpg')
     txt_name = os.path.join(full_res_dir,'labels', name+'.txt')
