@@ -6,15 +6,16 @@ Code to count coral settlers in settlement tanks using object detection and/or i
 
 ## Code layout
 ### Segmenter
-Contains code to train or predict coral using a yolo model
-cgras_20230421.yml - file that stores the location of data to train on
-predict_segmenter.py - code to predict corals on a list of images
-train_segmenter.py - code to train a yolo model on a datset
+Contains code to train or predict coral using a yolo model  
+cgras_20230421.yml - file that stores the location of data to train on  
+predict_segmenter.py - code to predict corals on a list of images  
+train_segmenter.py - code to train a yolo model on a datset  
+
 ### Image Processing
-Functions or code to process images
-convert_tif2jpg.py - converts a list of tiffs to jpg
-extract_imgs.py - extract images from cgras data samples into folder structure for detection
-tiling_images.py - tile big images into smaller ones with annotations that can then be trained on via a yolo model
+Functions or code to process images  
+convert_tif2jpg.py - converts a list of tiffs to jpg  
+extract_imgs.py - extract images from cgras data samples into folder structure for detection  
+tiling_images.py - tile big images into smaller ones with annotations that can then be trained on via a yolo model  
 till_n_predict.py - tile big images into smaller ones and then show the model prediction,
 ### Annotation
 Annotations.py - annotation class to segment and create CVAT annotations
