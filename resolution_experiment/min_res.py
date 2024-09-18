@@ -32,17 +32,28 @@ from ultralytics import YOLO
 import torch
 import supervision as sv
 import numpy as np
+import glob
 
 print('min_res.py')
 
 # output directory
-out_dir = '/home/dorian/Code/cgras_ws/cgras_settler_counter/resolution_experiment/output/'
+out_dir = '/home/dorian/Code/cgras_ws/cgras_settler_counter/resolution_experiment/output2/'
 os.makedirs(out_dir, exist_ok=True)
 
+# location of the different models:
+weights_locations = '/home/dorian/Code/cgras_ws/cgras_settler_counter/resolution_experiment/model'
+weights_files = sorted(glob.glob(os.path.join(weights_locations, 'yolov8x_minres*.pt')))
+
 # load NN 
-weight_file = '/home/dorian/Code/cgras_ws/cgras_settler_counter/resolution_experiment/model/cgras_yolov8n-seg_640p_20231209.pt'
+# weight_file = '/cgras_yolov8n-seg_640p_20231209.pt'
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-model = YOLO(weight_file).to(device)
+model_list = []
+print('weight files')
+for wf in weights_files:
+    model_list.append(YOLO(wf).to(device))
+    print(wf)
+    
+# model = YOLO(weight_file).to(device)
 
 # mask annotator for plotting
 mask_annotator = sv.MaskAnnotator()
@@ -51,7 +62,7 @@ mask_annotator = sv.MaskAnnotator()
 ###############################
 
 # location of image
-image_name = '/home/dorian/Code/cgras_ws/cgras_settler_counter/resolution_experiment/images/20230116_MIS6_RC_Aspat_T09_08_640crop.jpg'
+image_name = '/home/dorian/Code/cgras_ws/cgras_settler_counter/resolution_experiment/images/775_20211213_106_640crop.jpg'
 base_name = os.path.basename(image_name)[:-4]
 
 # load image, get image dimensions
@@ -65,17 +76,21 @@ label = '/home/dorian/Code/cgras_ws/cgras_settler_counter/resolution_experiment/
 
 # decide image resolution parameters
 # image resolution array for the largest dimension, needs to be a multiple of 32
-image_sizes = np.arange(640, 159, -32)
-# image_sizes = [640, 480, 320, 160]
+# image_sizes = np.arange(640, 159, -32)
+image_sizes = [160, 240, 320, 480, 640] # should correspond to sorted order of model_list
 
 # loop over image sizes, resize and detect on each
 image_array = []
 avg_confidence = []
 
-for i in image_sizes:
+for i, isize in enumerate(image_sizes):
+    
+    print(f'isize = {isize}p')
+    # select relevant model according to image size
+    model = model_list[i]
     
     # resize image
-    width_r = i
+    width_r = isize
     height_r = round(width_r / ar)
     image_r = cv.resize(image, (width_r, height_r), interpolation=cv.INTER_LINEAR) # resized image
     image_array.append(image_r)
@@ -105,7 +120,9 @@ for i in image_sizes:
     
     # temp: confidence
     if len(detections.confidence) > 0:
-        avg_confidence.append(np.mean(detections.confidence))
+        # avg_confidence.append(np.mean(detections.confidence))
+        # since there should only be one, take the max
+        avg_confidence.append(np.max(detections.confidence))
     else:
         avg_confidence.append(0) 
     
