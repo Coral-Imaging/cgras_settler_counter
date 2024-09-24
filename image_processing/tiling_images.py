@@ -48,7 +48,7 @@ class_colours = {classes[0]: blue,
 
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
 
-directory_count = 0
+directory_count = 4
 
 def make_sub_dirctory_save(save_path):
     save_train = os.path.join(save_path, f'train_{directory_count}')
@@ -214,7 +214,9 @@ def visualise(imgname, save_path):
 
 max_files = 16382
 for i, img in enumerate(imglist):
-    if i > 0 and i+400 % max_files == 0:
+    if i < 555:
+        continue
+    if i > 0 and i+426 % max_files == 0:
         directory_count += 1
         save_img, save_labels = make_sub_dirctory_save(save_path)
     name = os.path.basename(img)[:-4]
