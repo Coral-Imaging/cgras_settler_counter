@@ -12,13 +12,13 @@ from PIL import Image
 from shapely.geometry import Polygon, box, MultiPolygon, GeometryCollection
 from shapely.validation import explain_validity
 
-full_res_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data'
-save_path = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/tilling3'
-#images in one folder, labels in another. Only want to do images with an ossociated label file
+full_res_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/all_jpg'
+save_path = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/pdae_tilled'
+#images in one folder, labels in another. Only want to do images with an associated label file
 imglist = sorted(glob.glob(os.path.join(full_res_dir, 'images', '*.jpg')))
 
-classes = ["recruit_live_white", "recruit_cluster_live_white", "recruit_symbiotic", "recruit_symbiotic_cluster", "recruit_partial",
-           "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown"]
+classes = ["Platy", "Acro", "recruit_asymbiotic", "recruit_asymbiotic_cluster", "recruit_symbiotic",
+           "recruit_symbiotic_cluster", "recruit_dead", "recruit_cluster_dead"]
 orange = [255, 128, 0] 
 blue = [0, 212, 255] 
 purple = [170, 0, 255] 
@@ -37,10 +37,7 @@ class_colours = {classes[0]: blue,
                 classes[4]: brown,
                 classes[5]: cyan,
                 classes[6]: orange,
-                classes[7]: red,
-                classes[8]: dark_purple,
-                classes[9]: light_grey,
-                classes[10]: dark_green}
+                classes[7]: red}
 
 TILE_WIDTH= 640
 TILE_HEIGHT = 640

@@ -17,14 +17,14 @@ import random
 
 #export from CVAT as COCO1.1
 #comes in as ziped file with annotations/instances_default.json
-file_name = 'cgras_iteration2_coco.zip' #'cgras_coco.zip'
-save_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cvat_labels'
-download_dir = '/home/java/Downloads'
+file_name = 'project_pde_annotations_2024_09_10_00_10_04_coco 1.0.zip' #'cgras_coco.zip'
+save_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/all_jpg/labels'
+download_dir = '/home/wardlewo/Downloads'
 #data_locaton = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data' #location of /images folder
-data_locaton = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/tilling2/'
-convert = False
+data_locaton = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/all_jpg/images'
+convert = True
 label_fix = False #true if coco has different order of classes
-fill_in = False #if want to fill in blank text files
+fill_in = True #if want to fill in blank text files
 
 if convert:
     # convert coco to yolo
