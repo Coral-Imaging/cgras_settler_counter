@@ -39,20 +39,22 @@ class_colours = {classes[0]: blue,
                 classes[6]: orange,
                 classes[7]: red}
 
-TILE_WIDTH= 640
-TILE_HEIGHT = 640
-TRUNCATE_PERCENT = 0.1
+
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
 
+directory_count = 4
 
-save_train = os.path.join(save_path, 'train')
-save_img = os.path.join(save_train, 'images')
-save_labels = os.path.join(save_train, 'labels')
-os.makedirs(save_path, exist_ok=True)
-os.makedirs(save_train, exist_ok=True)
-os.makedirs(save_img, exist_ok=True)
-os.makedirs(save_labels, exist_ok=True)
+def make_sub_dirctory_save(save_path):
+    save_train = os.path.join(save_path, f'train_{directory_count}')
+    os.makedirs(save_path, exist_ok=True)
+    os.makedirs(save_train, exist_ok=True)
+    save_images = os.path.join(save_train, 'images')
+    save_labels = os.path.join(save_train, 'labels')
+    os.makedirs(save_images, exist_ok=True)
+    os.makedirs(save_labels, exist_ok=True)
+    return save_images, save_labels
 
+save_img, save_labels = make_sub_dirctory_save(save_path)
 
 def is_mostly_contained(polygon, x_start, x_end, y_start, y_end, threshold):
     """Returns true if a Shaply polygon has more then threshold percent in the area of a specified bounding box."""
@@ -139,8 +141,8 @@ def cut(img_name, save_img, test_name, save_labels, txt_name, img_no):
             y_end = min((y + 1) * TILE_HEIGHT - TILE_OVERLAP * (y != 0), imgh)
             y_start = y_end - TILE_HEIGHT
 
-            img_save_path = os.path.join(save_img,test_name+'_'+str(x_start)+'_'+str(y_start)+'.jpg')
-            txt_save_path = os.path.join(save_labels, test_name+'_'+str(x_start)+'_'+str(y_start)+'.txt')
+            img_save_path = os.path.join(save_img, f"{test_name}_{str(x_start).zfill(4)}_{str(y_start).zfill(4)}.jpg")
+            txt_save_path = os.path.join(save_labels, f"{test_name}_{str(x_start).zfill(4)}_{str(y_start).zfill(4)}.txt")
 
             #make cut and save image
             cut_n_save_img(x_start, x_end, y_start, y_end, np_img, img_save_path)
@@ -204,8 +206,13 @@ def visualise(imgname, save_path):
         # import code
         # code.interact(local=dict(globals(), **locals()))
 
-
+max_files = 16382
 for i, img in enumerate(imglist):
+    if i < 555:
+        continue
+    if i > 0 and i+426 % max_files == 0:
+        directory_count += 1
+        save_img, save_labels = make_sub_dirctory_save(save_path)
     name = os.path.basename(img)[:-4]
     img_name = os.path.join(full_res_dir,'images', name+'.jpg')
     txt_name = os.path.join(full_res_dir,'labels', name+'.txt')

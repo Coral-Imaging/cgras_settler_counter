@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 """ splitfiles.py
-    This script is used to split a dataset into training and validation sets.
+    This script is used to split a dataset into training, testing and validation sets.
 """
 
 import os
@@ -10,21 +10,15 @@ import shutil
 import glob
 import random
 
-
-data_locaton = '/media/java/cslics_ssd1/SCU_Pdae_Data/all_jpg'
-save_dir_for_split = '/media/java/cslics_ssd1/SCU_Pdae_Data/split_n_tilled' 
-
-#if want to split train, val, test data
-os.makedirs(save_dir_for_split, exist_ok=True)
 train_ratio = 0.70
 test_ratio = 0.15
 valid_ratio = 0.15
-def check_ratio(test_ratio,train_ratio,valid_ratio):
-    if(test_ratio>1 or test_ratio<0): ValueError(test_ratio,f'test_ratio must be > 1 and test_ratio < 0, test_ratio={test_ratio}')
-    if(train_ratio>1 or train_ratio<0): ValueError(train_ratio,f'train_ratio must be > 1 and train_ratio < 0, train_ratio={train_ratio}')
-    if(valid_ratio>1 or valid_ratio<0): ValueError(valid_ratio,f'valid_ratio must be > 1 and valid_ratio < 0, valid_ratio={valid_ratio}')
-    if not((train_ratio+test_ratio+valid_ratio)==1): ValueError("sum of train/val/test ratio must equal 1")
-check_ratio(test_ratio,train_ratio,valid_ratio)
+
+data_locaton1 = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data'
+data_locaton2 = '/media/java/cslics_ssd/cgras_datasets/cgras_dataset_20230421_100images/train'
+save_dir_for_split = '/media/java/CGRAS-SSD/cgras_23_n_24_combined/split_24_09_19' 
+
+os.makedirs(save_dir_for_split, exist_ok=True)
 
 imagelist = glob.glob(os.path.join(data_locaton+'/images', '*.jpg'))
 txtlist = glob.glob(os.path.join(data_locaton+'/labels', '*.txt'))
@@ -33,6 +27,13 @@ imagelist.sort()
 imgno = len(txtlist) 
 noleft = imgno
 print(f"processing {len(imagelist)}")
+
+def check_ratio(test_ratio,train_ratio,valid_ratio):
+    if(test_ratio>1 or test_ratio<0): ValueError(test_ratio,f'test_ratio must be > 1 and test_ratio < 0, test_ratio={test_ratio}')
+    if(train_ratio>1 or train_ratio<0): ValueError(train_ratio,f'train_ratio must be > 1 and train_ratio < 0, train_ratio={train_ratio}')
+    if(valid_ratio>1 or valid_ratio<0): ValueError(valid_ratio,f'valid_ratio must be > 1 and valid_ratio < 0, valid_ratio={valid_ratio}')
+    if not((train_ratio+test_ratio+valid_ratio)==1): ValueError("sum of train/val/test ratio must equal 1")
+check_ratio(test_ratio,train_ratio,valid_ratio)
 
 validimg, validtext, testimg, testtext = [], [], [], []
 
@@ -107,3 +108,36 @@ print("split complete")
 
 import code
 code.interact(local=dict(globals(), **locals()))
+
+#alternative method
+print("Usinf SKlearn file split")
+
+from sklearn.model_selection import train_test_split 
+
+X_train, X_test, y_train, y_test = train_test_split(imagelist, txtlist, test_size=0.30, random_state=42)
+X_val, X_test, y_val, y_test = train_test_split(X_test, y_test, test_size=0.50, random_state=42)
+
+def move_files_with_limit(file_list, prefix, save_dir, subfolder, max_files):
+    if len(file_list) >= max_files:
+        print(f"{prefix} {subfolder} list exceeds max file number of: {max_files} at length: {len(file_list)}, splitting into multiple directories")
+        split = len(file_list) // max_files
+        for i in range(split):
+            split_file_list = file_list[:max_files]
+            file_list = file_list[max_files:]
+            print(f"moving {len(split_file_list)} into {prefix}_{i}/{subfolder}")
+            move_file(split_file_list, save_dir, f'{prefix}_{i}/{subfolder}')
+        # Move remaining files
+        print(f"moving {len(file_list)} into {prefix}_{split}/{subfolder}")
+        move_file(file_list, save_dir, f'{prefix}_{split}/{subfolder}')
+    else:
+        print(f"moving {len(file_list)} into {prefix}/{subfolder}")
+        move_file(file_list, save_dir, f'{prefix}/{subfolder}')
+
+max_files = 16382
+
+move_files_with_limit(X_train, 'train', save_dir_for_split, 'images', max_files)
+move_files_with_limit(y_train, 'train', save_dir_for_split, 'labels', max_files)
+move_files_with_limit(X_val, 'valid', save_dir_for_split, 'images', max_files)
+move_files_with_limit(y_val, 'valid', save_dir_for_split, 'labels', max_files)
+move_files_with_limit(X_test, 'test', save_dir_for_split, 'images', max_files)
+move_files_with_limit(y_test, 'test', save_dir_for_split, 'labels', max_files)

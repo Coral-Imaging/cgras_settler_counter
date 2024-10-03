@@ -35,27 +35,59 @@ class_colours = {classes[0]: blue,
                 classes[10]: dark_green}
 
 def binary_mask_to_rle(binary_mask):
-    """binary_mask_to_rle
-    Convert a binary np array into a RLE format
-    
+    """
+    Convert a binary np array into a RLE format.
     Args:
         binary_mask (uint8 2D numpy array): binary mask
-
     Returns:
         rle: list of rle numbers
     """
-    rle = []
-    current_pixel = 0
-    run_length = 0
+    # Flatten the binary mask and append a zero at the end to handle edge case
+    flat_mask = binary_mask.flatten()
+    # Find the positions where the values change
+    changes = np.diff(flat_mask)
+    # Get the run lengths
+    runs = np.where(changes != 0)[0] + 1
+    # Get the lengths of each run
+    run_lengths = np.diff(np.concatenate([[0], runs]))
+    return run_lengths.tolist()
 
-    for pixel in binary_mask.ravel(order='C'): #go through the flaterened binary mask
-        if pixel == current_pixel:  #increase number if same pixel
-            run_length += 1
-        else: #else save run length and reset
-            rle.append(run_length) 
-            run_length = 1
-            current_pixel = pixel
-    return rle
+def rle_to_binary_mask(rle_list, 
+                       width: int, 
+                       height: int, 
+                       SHOW_IMAGE: bool):
+    """rle_to_binary_mask
+    Converts a rle_list into a binary np array. Used to check the binary_mask_to_rle function
+
+    Args:
+        rle_list (list of strings): containing the rle information
+        width (int): width of shape
+        height (int): height of shape
+        SHOW_IMAGE (bool): True if binary mask wants to be viewed
+
+    Returns:
+        mask: uint8 2D np array
+    """
+    mask = np.zeros((height, width), dtype=np.uint8) 
+    current_pixel = 0
+    
+    for i in range(0, len(rle_list)):
+        run_length = int(rle_list[i]) #find the length of current 0 or 1 run
+        if (i % 2 == 0): #if an even number the pixel value will be 0
+            run_value = 0
+        else:
+            run_value = 1
+
+        for j in range(run_length): #fill the pixel with the correct value
+            mask.flat[current_pixel] = run_value 
+            current_pixel += 1
+
+    if (SHOW_IMAGE):
+        print("rle_list to binary mask")
+        plt.imshow(mask, cmap='binary')
+        plt.show()
+
+    return mask
 
 
 def poly_2_rle(points, 
