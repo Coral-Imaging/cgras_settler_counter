@@ -49,10 +49,11 @@ def save_txt_predictions_masks(results, conf, class_list, save_path):
                 file.write(str(item) + ' ')
             file.write('\n')
 
-def plot_ground_truth(image, txt, classes, class_colours, line_tickness):
+def plot_ground_truth(image, txt, classes, class_colours, line_tickness, imgname):
     """plot_ground_truth
     plots the ground truth annotiations onto an image
     """
+    height, width, _ = image.shape
     points_normalised, points, class_idx = [], [], []
     with open(txt, "r") as file:
         lines = file.readlines()
@@ -70,10 +71,12 @@ def plot_ground_truth(image, txt, classes, class_colours, line_tickness):
             points.append(values)
         except:
             points.append(values)
-            print(f'invalid line there is {len(data)} data, related to img {imgname}')
+            print(f'invalid line of data length: {len(data)}, related to img {imgname}')
     for idx in range(len(class_idx)):
         pointers = np.array(points[idx], np.int32).reshape(-1,2)
         cv.polylines(image, [pointers], True, class_colours[classes[class_idx[idx]]], line_tickness)
+    # imgsave_path = os.path.join(save_dir, os.path.basename(imgname)[:-4] + '_gt.jpg')
+    # cv.imwrite(imgsave_path, image)
     return image
 
 def save_image_predictions_mask(results, image, imgname, save_path, conf, class_list, classes, class_colours, ground_truth=False, txt=None):
@@ -146,7 +149,7 @@ def create_overlapped(box1, box2, i, j, mask1, mask2, conf_list, cls_id_list):
     ).astype(np.uint8)
     return new_box, new_conf, new_class, new_mask, new_tl_x, new_tl_y, new_w, new_h
 
-def combine_detections(box_array, conf_list, cls_id_list, mask_list):
+def combine_detections(box_array, conf_list, cls_id_list, mask_list, verbose=False):
     updated_box_array, updated_conf_list, updated_class_id, updated_mask_list = [], [], [], []
     overlap_count = 0
     combined_indices = set()
@@ -165,7 +168,8 @@ def combine_detections(box_array, conf_list, cls_id_list, mask_list):
                 overlap_count += 1
                 new_box, new_conf, new_class, new_mask, new_tl_x, new_tl_y, new_w, new_h = create_overlapped(
                     box1, box2, i, j, mask1, mask2, conf_list, cls_id_list)
-                print(f"Combining {i} and {j}")
+                if verbose:
+                    print(f"Combining {i} and {j}")
                 updated_box_array.append(new_box)
                 updated_conf_list.append(new_conf)
                 updated_class_id.append(new_class)
@@ -178,7 +182,7 @@ def combine_detections(box_array, conf_list, cls_id_list, mask_list):
             updated_class_id.append(cls_id_list[i])
             updated_mask_list.append(mask1)
     updated_box_array = np.array(updated_box_array)
-    return updated_box_array, updated_conf_list, updated_class_id, updated_mask_list
+    return updated_box_array, updated_conf_list, updated_class_id, updated_mask_list, overlap_count
 
 def callback(image_slice: np.ndarray) -> sv.Detections:
     results = model(image_slice)
@@ -224,6 +228,60 @@ def save_img_batch(image_cv, box_array, conf_list, cls_id_list, mask_list, image
     imgsave_path = os.path.join(save_dir, imgsavename[:-4] + '_det_mask.jpg')
     cv.imwrite(imgsave_path, semi_transparent_mask)
 
+def update_lists(box_list, conf_list, cls_id_list, mask_list, sliced_detections, x, y, x_end, y_end):
+    for box in sliced_detections.xyxy:
+        box[0] += x
+        box[1] += y
+        box[2] += x
+        box[3] += y
+        box_list.append(box)
+    for conf in sliced_detections.confidence:
+        conf_list.append(conf)
+    for cls_id in sliced_detections.class_id:
+        cls_id_list.append(cls_id)
+    for data in sliced_detections.data['class_name']:
+        data_dict['class_name'].append(data)
+    for mask in sliced_detections.mask:
+        mask_resized = cv.resize(mask.astype(np.uint8), (x_end - x, y_end - y))
+        rows, cols = np.where(mask_resized == 1)
+        if len(rows) > 0 and len(cols) > 0:
+            top_left_y = rows.min()
+            bottom_right_y = rows.max()
+            top_left_x = cols.min()
+            bottom_right_x = cols.max()
+            box_width = bottom_right_x - top_left_x + 1
+            box_height = bottom_right_y - top_left_y + 1
+            sub_mask = mask_resized[top_left_y:bottom_right_y + 1, top_left_x:bottom_right_x + 1]
+            mask_list.append((sub_mask, top_left_x + x, top_left_y + y, box_width, box_height))  
+    return box_list, conf_list, cls_id_list, mask_list
+
+def save_img_sliced(slicer, image, image_file, save_dir):
+    sliced_detections = slicer(image=image)
+    masked = image.copy()
+    for detection in sliced_detections:
+        xyxy = detection[0].tolist()
+        mask_array = detection[1].astype(np.uint8) 
+        confidence = detection[2]
+        class_id = detection[3]
+        contours, _ = cv.findContours(mask_array, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        for contour in contours:
+            points = np.squeeze(contour)
+            if len(points.shape) == 1:
+                points = points.reshape(-1, 1, 2)
+            elif len(points.shape) == 2 and points.shape[1] != 2:
+                points = points.reshape(-1, 1, 2)
+            cls_name = classes[class_id]
+            desired_color = class_colours[cls_name]
+            if points is None or not points.any() or len(points) == 0:
+                print(f'mask encountered problem with points {points}, class is {cls_name}')
+            else: 
+                cv.fillPoly(masked, [points], desired_color) 
+        cv.putText(image, f"{confidence:.2f}: {cls_name}", (int(xyxy[0]-20), int(xyxy[1] - 5)), cv.FONT_HERSHEY_SIMPLEX, 2, desired_color, 5)
+    alpha = 0.30
+    semi_transparent_mask = cv.addWeighted(image, 1-alpha, masked, alpha, 0)
+    imgsave_path = os.path.join(save_dir, os.path.basename(image_file)[:-4] + '_t1.jpg')
+    cv.imwrite(imgsave_path, semi_transparent_mask)
+
 # load model
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 model = YOLO(weights_file_path).to(device)
@@ -254,15 +312,17 @@ os.makedirs(imgsave_dir, exist_ok=True)
 #         ground_truth = True
 #         save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours, ground_truth, txt)
 
+
 if SAHI:
     for i, imgname in enumerate(imglist):
         print(f'SHAI predictions on {i+1}/{len(imglist)}')
-        if i >= 3: # for debugging purposes
+        if i >= 4: # for debugging purposes
             print("Hit Max img")
             import code
             code.interact(local=dict(globals(), **locals()))
             break
         image = cv.imread(imgname)
+        txt = txtlist[i]
         image_height, image_width = image.shape[:2]
         if batch:
             data_dict = {'class_name': []}
@@ -277,61 +337,20 @@ if SAHI:
                     if sliced_detections.confidence.size == 0:
                         print("No detections found in batch")
                         continue
-                    for box in sliced_detections.xyxy:
-                        box[0] += x
-                        box[1] += y
-                        box[2] += x
-                        box[3] += y
-                        box_list.append(box)
-                    for conf in sliced_detections.confidence:
-                        conf_list.append(conf)
-                    for cls_id in sliced_detections.class_id:
-                        cls_id_list.append(cls_id)
-                    for data in sliced_detections.data['class_name']:
-                        data_dict['class_name'].append(data)
-                    for mask in sliced_detections.mask:
-                        mask_resized = cv.resize(mask.astype(np.uint8), (x_end - x, y_end - y))
-                        rows, cols = np.where(mask_resized == 1)
-                        if len(rows) > 0 and len(cols) > 0:
-                            top_left_y = rows.min()
-                            bottom_right_y = rows.max()
-                            top_left_x = cols.min()
-                            bottom_right_x = cols.max()
-                            box_width = bottom_right_x - top_left_x + 1
-                            box_height = bottom_right_y - top_left_y + 1
-                            sub_mask = mask_resized[top_left_y:bottom_right_y + 1, top_left_x:bottom_right_x + 1]
-                            mask_list.append((sub_mask, top_left_x + x, top_left_y + y, box_width, box_height))   
+                    box_list, conf_list, cls_id_list, mask_list = update_lists(box_list, conf_list, cls_id_list, mask_list, sliced_detections, x, y, x_end, y_end)
             conf_array = np.array(conf_list)
             box_array = np.array(box_list)
-            updated_box_array, updated_conf_list, updated_class_id, updated_mask_list = combine_detections(box_array, conf_array, cls_id_list, mask_list)
-            save_img_batch(image, box_array, conf_list, cls_id_list, mask_list, os.path.basename(imgname), save_dir)
+            updated_box_array, updated_conf_list, updated_class_id, updated_mask_list, overlap_count = combine_detections(box_array, conf_array, cls_id_list, mask_list)
+            while overlap_count > 1:
+                conf_array = np.array(updated_conf_list)
+                box_array = np.array(updated_box_array)
+                print("update again")
+                updated_box_array, updated_conf_list, updated_class_id, updated_mask_list, overlap_count = combine_detections(box_array, conf_array, updated_class_id, updated_mask_list)
+            image2 = plot_ground_truth(image, txt, classes, class_colours, 10, imgname)
             save_img_batch(image, updated_box_array, updated_conf_list, updated_class_id, updated_mask_list, os.path.basename(imgname), save_dir)
         else:
-            sliced_detections = slicer(image=image)
-            masked = image.copy()
-            for detection in sliced_detections:
-                xyxy = detection[0].tolist()
-                mask_array = detection[1].astype(np.uint8) 
-                confidence = detection[2]
-                class_id = detection[3]
-                contours, _ = cv.findContours(mask_array, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-                for contour in contours:
-                    points = np.squeeze(contour)
-                    if len(points.shape) == 1:
-                        points = points.reshape(-1, 1, 2)
-                    elif len(points.shape) == 2 and points.shape[1] != 2:
-                        points = points.reshape(-1, 1, 2)
-                    cls_name = classes[class_id]
-                    desired_color = class_colours[cls_name]
-                    if points is None or not points.any() or len(points) == 0:
-                        print(f'mask encountered problem with points {points}, class is {cls_name}')
-                    else: 
-                        cv.fillPoly(masked, [points], desired_color) 
-                cv.putText(image, f"{confidence:.2f}: {cls_name}", (int(xyxy[0]-20), int(xyxy[1] - 5)), cv.FONT_HERSHEY_SIMPLEX, 2, desired_color, 5)
-            alpha = 0.30
-            semi_transparent_mask = cv.addWeighted(image, 1-alpha, masked, alpha, 0)
-            imgsave_path = os.path.join(save_dir, os.path.basename(image_file)[:-4] + '_t1.jpg')
-            cv.imwrite(imgsave_path, semi_transparent_mask)
+            image = plot_ground_truth(image, txt, classes, class_colours, 2)
+            save_img_sliced(slicer, image, imgname, save_dir)
 
 
 import code
@@ -364,9 +383,10 @@ if ultralitics_version: #ultralytics code
         
 
 # for interactive debugger in terminal:
+print("for bounding boxes below")
 import code
 code.interact(local=dict(globals(), **locals()))
-print("for bounding boxes")
+
 
 
 def save_image_predictions(results, image, imgname, save_path, classes, class_colours, ground_truth=False, txt=None):
