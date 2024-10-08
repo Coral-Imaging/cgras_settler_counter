@@ -11,19 +11,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 weights_file = '/home/java/Java/ultralytics/runs/segment/train21/weights/best.pt' #model
-conf_thresh = 0.001
+conf_thresh = 0.01
 iou_thresh = 0.6
 
-# Load a model
-model = YOLO(weights_file)
-
-# Validate the model
-#if not arguments, will use the defult arguments and validate on the Val files of the model trained dataset.
-metrics_d = model.val(conf=conf_thresh, iou=iou_thresh, plots=True) #data='/home/java/Java/Cgras/cgras_settler_counter/segmenter/cgras_20230421.yaml',
-
-tp_d, fp_d = metrics_d.confusion_matrix.tp_fp() # returns 2 arrays, 1xN where N is the number of classes.
-conf_mat_d = metrics_d.confusion_matrix.matrix #has the confusion matrix as NXN array
-conf_mat_normalised = conf_mat_d / (conf_mat_d.sum(0).reshape(1, -1) + 1E-9)
 
 def get_TP_FP_FN_TN(conf_mat, class_ignore=None):
     """get_TP_FP_FN_TN
@@ -33,15 +23,15 @@ def get_TP_FP_FN_TN(conf_mat, class_ignore=None):
     if class_ignore is None:
         class_ignore = []
     
-    tp_d = conf_mat_d.diagonal()
-    fp_d = conf_mat_d.sum(1) - tp_d
-    fn_d = conf_mat_d.sum(0) - tp_d
-    total_samples = conf_mat_d.sum()
-    tn_d = np.zeros(conf_mat_d.shape[0])
-    for i in range(conf_mat_d.shape[0]):
-        tp = conf_mat_d[i, i]
-        row_sum = conf_mat_d[i, :].sum()
-        col_sum = conf_mat_d[:, i].sum()
+    tp_d = conf_mat.diagonal()
+    fp_d = conf_mat.sum(1) - tp_d
+    fn_d = conf_mat.sum(0) - tp_d
+    total_samples = conf_mat.sum()
+    tn_d = np.zeros(conf_mat.shape[0])
+    for i in range(conf_mat.shape[0]):
+        tp = conf_mat[i, i]
+        row_sum = conf_mat[i, :].sum()
+        col_sum = conf_mat[:, i].sum()
         tn_d[i] = total_samples - row_sum - col_sum + tp
 
     mask = np.ones(conf_mat.shape[0], dtype=bool)
@@ -65,20 +55,34 @@ def plot_results(data, conf_thresh, iou_thresh):
     y_labels = ['T (True)', 'F (False)']  # y-axis labels
     plt.figure(figsize=(6, 4))
     sns.heatmap(data, annot=True, fmt=".2%", cmap='Blues', xticklabels=x_labels, yticklabels=y_labels)
-    plt.title(f"Simplified confusion matrix with confidence of {conf_thresh} and IOU of {iou_thresh}")
+    plt.title(f"Simplified confusion matrix with confidence of {conf_thresh:.2f} and IOU of {iou_thresh:.2f}")
     plt.show()
+
+
+# Load a model
+model = YOLO(weights_file)
+
+## Validate the model
+#if not arguments, will use the defult arguments and validate on the Val files of the model trained dataset.
+metrics_d = model.val(plots=True) #DEFAULT, conf=0.001, iou=0.6 #data='/home/java/Java/Cgras/cgras_settler_counter/segmenter/cgras_20230421.yaml',
+f1_d = metrics_d.box.f1  # F1 score for each class
+tp_d, fp_d = metrics_d.confusion_matrix.tp_fp() # returns 2 arrays, 1xN where N is the number of classes.
+conf_mat_d = metrics_d.confusion_matrix.matrix #has the confusion matrix as NXN array
+conf_mat_normalised = conf_mat_d / (conf_mat_d.sum(0).reshape(1, -1) + 1E-9)
+
+metrics_max = model.val(conf=max(f1_d), iou=iou_thresh, plots=True)
+conf_mat_max = metrics_max.confusion_matrix.matrix
 
 TPmean, FNmean, FPmean, TNmean = get_TP_FP_FN_TN(conf_mat_d, class_ignore=[8, 9, 10, 11])
 data = np.array([[TPmean, TNmean], [FPmean, FNmean]])
 plot_results(data, conf_thresh, iou_thresh)
 
-# metrics_25 = model.val(conf=0.25, iou=0.6, plots=True)
-# tp_25, fp_25 = metrics_25.confusion_matrix.tp_fp() # returns 2 arrays, 1xN where N is the number of classes.
-# conf_mat_25 = metrics_25.confusion_matrix.matrix #has the confusion matrix as NXN array
+TPmean, FNmean, FPmean, TNmean = get_TP_FP_FN_TN(conf_mat_max, class_ignore=[8, 9, 10, 11])
+data = np.array([[TPmean, TNmean], [FPmean, FNmean]])
+plot_results(data, max(f1_d), iou_thresh)
 
-# metrics_max = model.val(conf=max(f1_d), iou=0.6, plots=True)
-# tp_25, fp_25 = metrics_max.confusion_matrix.tp_fp() # returns 2 arrays, 1xN where N is the number of classes.
-# conf_mat_25 = metrics_max.confusion_matrix.matrix #has the confusion matrix as NXN array
+## Visulise instances
+
 
 print("Done")
 import code
@@ -91,7 +95,6 @@ metrics_d.box.map75  # map75
 metrics_d.box.maps   # a list contains map50-95 of each category
 metrics_d.box.p   # Precision for each class
 metrics_d.box.r   # Recall for each class
-f1_d = metrics_d.box.f1  # F1 score for each class
 metrics_d.box.all_ap  # AP scores for all classes and all IoU thresholds
 metrics_d.box.ap_class_index  # Index of class for each AP
 metrics_d.box.nc  # Number of classes
