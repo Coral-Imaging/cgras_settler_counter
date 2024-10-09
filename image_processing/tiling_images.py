@@ -12,8 +12,9 @@ from PIL import Image
 from shapely.geometry import Polygon, box, MultiPolygon, GeometryCollection
 from shapely.validation import explain_validity
 
-full_res_dir = '/media/java/CGRAS-SSD/cgras_23_n_24_combined/split_24_09_19/train'
-save_path = '/media/java/CGRAS-SSD/cgras_23_n_24_combined/tilled'
+full_res_dir = '/media/java/cslics_ssd/SCU_Pdae_Data/split2'
+save_path = '/media/java/cslics_ssd/split_n_tilled2/'
+prefix = 'train'
 TILE_WIDTH= 640
 TILE_HEIGHT = 640
 TRUNCATE_PERCENT = 0.5
@@ -48,10 +49,10 @@ class_colours = {classes[0]: blue,
 
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
 
-directory_count = 4
+directory_count = 0
 
-def make_sub_dirctory_save(save_path):
-    save_train = os.path.join(save_path, f'train_{directory_count}')
+def make_sub_dirctory_save(prefix, save_path):
+    save_train = os.path.join(save_path, f'{prefix}_{directory_count}')
     os.makedirs(save_path, exist_ok=True)
     os.makedirs(save_train, exist_ok=True)
     save_images = os.path.join(save_train, 'images')
@@ -214,11 +215,11 @@ def visualise(imgname, save_path):
 
 max_files = 16382
 for i, img in enumerate(imglist):
-    if i < 555:
-        continue
-    if i > 0 and i+426 % max_files == 0:
+    # if i < 555:
+    #     continue
+    if i > 0 and i+400 % max_files == 0: #make a new subdirectory instead of filling up the old and stopping
         directory_count += 1
-        save_img, save_labels = make_sub_dirctory_save(save_path)
+        save_img, save_labels = make_sub_dirctory_save(prefix, save_path)
     name = os.path.basename(img)[:-4]
     img_name = os.path.join(full_res_dir,'images', name+'.jpg')
     txt_name = os.path.join(full_res_dir,'labels', name+'.txt')
