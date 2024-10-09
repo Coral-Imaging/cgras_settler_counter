@@ -24,10 +24,10 @@ batch_height, batch_width = 3000, 3000
 #weight_file = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt" #dorian used
 weights_file_path = "/media/wardlewo/cslics_ssd/SCU_Pdae_Data/SCU_PDE_run/weights/best.pt" #trained on 640 imgsz dataset combined 22 and 23
 
-save_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/testsAndVisualisation/20241003_Pdae_Visualisation'
-img_folder = os.path.join('/media/wardlewo/cslics_ssd/SCU_Pdae_Data/all_jpg/images')
+save_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/testsAndVisualisation/20241008_Pdae_Visualisation'
+img_folder = os.path.join('/media/wardlewo/cslics_ssd/SCU_Pdae_Data/RAWData/CutImages3x3/Combined')
 #txt_folder = os.path.join(save_dir, 'train', 'labels')
-txt_folder = os.path.join('//media/wardlewo/cslics_ssd/SCU_Pdae_Data/all_jpg/labels')
+txt_folder = os.path.join('/media/wardlewo/cslics_ssd/SCU_Pdae_Data/RAWData/CutImages3x3/annotations_2024_09_10_yolov8 segmentation 1.0/labels/train')
 
 #save txt results like they would be saved by ultralytics
 def save_txt_predictions_masks(results, conf, class_list, save_path):
@@ -77,6 +77,7 @@ def plot_ground_truth(image, txt, classes, class_colours, line_tickness, imgname
         cv.polylines(image, [pointers], True, class_colours[classes[class_idx[idx]]], line_tickness)
     # imgsave_path = os.path.join(save_dir, os.path.basename(imgname)[:-4] + '_gt.jpg')
     # cv.imwrite(imgsave_path, image)
+    print(f'number of ground truth annotiations: {len(points)}')
     return image
 
 def save_image_predictions_mask(results, image, imgname, save_path, conf, class_list, classes, class_colours, ground_truth=False, txt=None):
@@ -108,7 +109,7 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
         print(f'No masks found in {imgname}')
     
     if ground_truth & (txt is not None):
-        image = plot_ground_truth(image, txt, classes, class_colours, line_tickness, imgname)
+        image = plot_ground_truth(image, txt, classes, class_colours, line_tickness, imgname)        
 
     alpha = 0.5
     semi_transparent_mask = cv.addWeighted(image, 1-alpha, masked, alpha, 0)

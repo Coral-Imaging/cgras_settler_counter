@@ -11,10 +11,10 @@ if split:
     Image.MAX_IMAGE_PIXELS = None
 
 # tiff directory
-tif_dir = '/media/java/cslics_ssd1/SCU_Pdae_Data/T23 (Done)'#'/home/dorian/Data/cgras_dataset_20230421/tif'
+tif_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/RAWData/T23 (Done)'#'/home/dorian/Data/cgras_dataset_20230421/tif'
 
 # jpg out directory
-jpg_dir = '/media/java/cslics_ssd1/SCU_Pdae_Data/T23jpg' #'/home/dorian/Data/cgras_dataset_20230421/jpg'
+jpg_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/RAWData/RAWImage/T23' #'/home/dorian/Data/cgras_dataset_20230421/jpg'
 os.makedirs(jpg_dir, exist_ok=True)
 
 for i, filename in enumerate(os.listdir(tif_dir)):

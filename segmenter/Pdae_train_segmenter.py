@@ -12,7 +12,7 @@ data_file = '/home/wardlewo/Reggie/corals/cgras_settler_counter/segmenter/cgras_
 
 # load model
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-model = YOLO("yolov8x.pt")
+model = YOLO("yolov8x-seg.pt")
 model.info()
 # train model
 # for base training only want, 0: 'recruit_live_white', 1: 'recruit_cluster_live_white', 

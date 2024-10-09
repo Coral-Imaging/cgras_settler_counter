@@ -12,8 +12,8 @@ from PIL import Image
 from shapely.geometry import Polygon, box, MultiPolygon, GeometryCollection
 from shapely.validation import explain_validity
 
-full_res_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/all_jpg'
-save_path = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/pdae_tilled'
+full_res_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split2/train'
+save_path = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/train'
 #images in one folder, labels in another. Only want to do images with an associated label file
 imglist = sorted(glob.glob(os.path.join(full_res_dir, 'images', '*.jpg')))
 
