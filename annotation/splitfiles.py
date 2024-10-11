@@ -11,8 +11,8 @@ import glob
 import random
 
 
-data_locaton = '/media/java/cslics_ssd1/SCU_Pdae_Data/all_jpg'
-save_dir_for_split = '/media/java/cslics_ssd1/SCU_Pdae_Data/split_n_tilled' 
+data_locaton = '/home/dorian/Data/cgras_data_2023_tiled/unsplit'
+save_dir_for_split = '/home/dorian/Data/cgras_data_2023_tiled/split' 
 
 #if want to split train, val, test data
 os.makedirs(save_dir_for_split, exist_ok=True)

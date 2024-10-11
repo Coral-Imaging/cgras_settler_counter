@@ -1,7 +1,7 @@
 # conda environment configuration file
 # for cgras coral settler counter
 
-name: cgras
+name: cgrasbak
 channels:
   - conda-forge
   - pytorch
@@ -28,3 +28,7 @@ dependencies:
   - opencv>=4.6
   - ultralytics
   - sahi
+  - supervision
+  - albumentations
+  - protobuf
+  - flatbuffers

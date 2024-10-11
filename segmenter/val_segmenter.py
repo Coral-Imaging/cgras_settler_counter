@@ -7,14 +7,14 @@ validate a model against a dataset
 #TODO: no of images in datset, info on what dataset is.
 from ultralytics import YOLO
 
-weights_file = '/home/java/Java/ultralytics/runs/segment/train16/weights/best.pt' #model
+weights_file = '/home/dorian/Code/cgras_ws/cgras_settler_counter/segmenter/weights/20240923_tiledimages_yolov8xseg_naive.pt' #model
 
 # Load a model
 model = YOLO(weights_file)
 
 # Validate the model
 #if not arguments, will use the defult arguments and validate on the Val files of the model trained dataset.
-metrics = model.val(data='/home/java/Java/Cgras/cgras_settler_counter/segmenter/cgras_20230421.yaml', conf=0.001, iou=0.6) 
+metrics = model.val(data='/home/dorian/Code/cgras_ws/cgras_settler_counter/segmenter/cgras_20230421_dt.yaml', conf=0.001, iou=0.6) 
 
 metrics.box.map    # map50-95
 metrics.box.map50  # map50
