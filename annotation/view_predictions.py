@@ -15,17 +15,18 @@ from Utils import classes, class_colours
 import supervision as sv
 
 ultralitics_version = False #set to true, if want example of ultralitics prediction
-SAHI = True #set to true if using SAHI to look at 640p images
-batch = True #image too big / too many predictions to do in one go
+SAHI = False #set to true if using SAHI to look at 640p images
+batch = False #image too big / too many predictions to do in one go
 batch_height, batch_width = 3000, 3000
 #weights_file_path = '/home/java/Java/ultralytics/runs/segment/train6/weights/best.pt' #trained on tilled images
 #weights_file_path = '/home/java/Java/ultralytics/runs/segment/train4/weights/best.pt' #trained on 640 imgsz
 # weights_file_path = '/home/java/Java/ultralytics/runs/segment/train5/weights/best.pt' #trained on 1280 imgsz
 #weight_file = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt" #dorian used
-weights_file_path = "/home/java/Java/ultralytics/runs/segment/train21/weights/best.pt" #trained on 640 imgsz dataset combined 22 and 23
+#weights_file_path = "/home/java/Java/ultralytics/runs/segment/train21/weights/best.pt" #trained on 640 imgsz dataset combined 22 and 23
+weights_file_path = "/media/java/cslics_ssd/SCU_Pdae_Data/split and tilling/ultralytics_output/train4/weights/best.pt"
 
-save_dir = '/media/java/CGRAS-SSD/cgras_23_n_24_combined/split_24_09_19/visualise'
-img_folder = os.path.join('/media/java/CGRAS-SSD/cgras_23_n_24_combined/split_24_09_19/test/images')
+save_dir = '/media/java/cslics_ssd/SCU_Pdae_Data/testsAndVisualisation/20241029'
+img_folder = os.path.join('/media/java/cslics_ssd/SCU_Pdae_Data/RAWData/CutImages3x3/Combined')
 #txt_folder = os.path.join(save_dir, 'train', 'labels')
 txt_folder = os.path.join('/media/java/CGRAS-SSD/cgras_23_n_24_combined/split_24_09_19/test/labels')
 
@@ -294,25 +295,6 @@ txtlist = sorted(glob.glob(os.path.join(txt_folder, '*.txt')))
 imgsave_dir = save_dir
 os.makedirs(imgsave_dir, exist_ok=True)
 
-# if not ultralitics_version:
-#     for i, imgname in enumerate(imglist):
-#         print(f'predictions on {i+1}/{len(imglist)}')
-#         if i >= 10: # for debugging purposes
-#             break 
-#             import code
-#             code.interact(local=dict(globals(), **locals()))
-#         image = cv.imread(imgname)
-#         results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
-#         conf, class_list = [], [] 
-#         for j, b in enumerate(results[0].boxes):
-#             conf.append(b.conf.item())
-#             class_list.append(b.cls_name.item())
-        
-#         txt = txtlist[i]
-#         ground_truth = True
-#         save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours, ground_truth, txt)
-
-
 if SAHI:
     for i, imgname in enumerate(imglist):
         print(f'SHAI predictions on {i+1}/{len(imglist)}')
@@ -351,14 +333,25 @@ if SAHI:
         else:
             image = plot_ground_truth(image, txt, classes, class_colours, 2)
             save_img_sliced(slicer, image, imgname, save_dir)
+elif not ultralitics_version:
+    for i, imgname in enumerate(imglist):
+        print(f'predictions on {i+1}/{len(imglist)}')
+        # if i >= 10: # for debugging purposes
+        #     break 
+        #     import code
+        #     code.interact(local=dict(globals(), **locals()))
+        image = cv.imread(imgname)
+        results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
+        conf, class_list = [], [] 
+        for j, b in enumerate(results[0].boxes):
+            conf.append(b.conf.item())
+            class_list.append(b.cls.item())
+        
+        txt = None
+        ground_truth = False
+        save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours, ground_truth, txt)
 
-
-import code
-code.interact(local=dict(globals(), **locals()))
-
-
-
-if ultralitics_version: #ultralytics code
+elif ultralitics_version: #ultralytics code
     for i, imgname in enumerate(imglist):
         if i >= 10: # for debugging purposes
             break 
@@ -371,13 +364,13 @@ if ultralitics_version: #ultralytics code
         #masks = results[0].masks
         for i, b in enumerate(results[0].boxes):
             conf.append(b.conf.item())
-            class_list.append(b.cls_name.item())
+            class_list.append(b.cls.item())
             #seg = masks[i].xyn[0]
         for r in results:
             im_array = r.plot(conf=True, line_width=4, font_size=4, boxes=True)
             im = Image.fromarray(im_array[..., ::-1])
             im.show()
-        r.save_txt(image_file[:-4]+'_'+ '_detmask.txt', save_conf=True ) 
+        #r.save_txt(image_file[:-4]+'_'+ '_detmask.txt', save_conf=True ) 
             ## Saves masks like: (class being first number and confidence being the last, middle numbers the mask.xyn values ) masks[j].xyn[0].copy().reshape(-1)
             ## 9 0.207813 0.368893 0.20625 0.371234 0.20625 0.392305 0.207813 0.394646 0.215625 0.394646 0.217187 0.392305 0.217187 0.389963 0.220313 0.385281 0.221875 0.385281 0.223438 0.38294 0.223438 0.371234 0.221875 0.368893 0.971601
         
