@@ -10,8 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-weights_file = '/home/java/Java/ultralytics/runs/segment/train21/weights/best.pt' #model
-conf_thresh = 0.001
+weights_file = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/ultralytics_output/train4/weights/best.pt' #model
+conf_thresh = 0.25
 iou_thresh = 0.6
 
 # Load a model
@@ -19,13 +19,13 @@ model = YOLO(weights_file)
 
 # Validate the model
 #if not arguments, will use the defult arguments and validate on the Val files of the model trained dataset.
-metrics_d = model.val(conf=conf_thresh, iou=iou_thresh, plots=True) #data='/home/java/Java/Cgras/cgras_settler_counter/segmenter/cgras_20230421.yaml',
+metrics_d = model.val(conf=conf_thresh, iou=iou_thresh, project = "/home/wardlewo/Reggie/ultralytics_output/", data='/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/cgras_Pdae_20230421.yaml', plots=True) #data='/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/cgras_20230421.yaml',
 
 tp_d, fp_d = metrics_d.confusion_matrix.tp_fp() # returns 2 arrays, 1xN where N is the number of classes.
 conf_mat_d = metrics_d.confusion_matrix.matrix #has the confusion matrix as NXN array
 conf_mat_normalised = conf_mat_d / (conf_mat_d.sum(0).reshape(1, -1) + 1E-9)
 
-def get_TP_FP_FN_TN(conf_mat, class_ignore=None):
+def get_TP_FP_FN_TN(conf_mat, class_ignore):
     """get_TP_FP_FN_TN
         Get the average True Positive, False Positive, False Negative and True Negative 
         rates for the confusion matrix ignoring the classes in class_ignore.
@@ -33,15 +33,15 @@ def get_TP_FP_FN_TN(conf_mat, class_ignore=None):
     if class_ignore is None:
         class_ignore = []
     
-    tp_d = conf_mat_d.diagonal()
-    fp_d = conf_mat_d.sum(1) - tp_d
-    fn_d = conf_mat_d.sum(0) - tp_d
-    total_samples = conf_mat_d.sum()
-    tn_d = np.zeros(conf_mat_d.shape[0])
-    for i in range(conf_mat_d.shape[0]):
-        tp = conf_mat_d[i, i]
-        row_sum = conf_mat_d[i, :].sum()
-        col_sum = conf_mat_d[:, i].sum()
+    tp_d = conf_mat.diagonal()
+    fp_d = conf_mat.sum(1) - tp_d
+    fn_d = conf_mat.sum(0) - tp_d
+    total_samples = conf_mat.sum()
+    tn_d = np.zeros(conf_mat.shape[0])
+    for i in range(conf_mat.shape[0]):
+        tp = conf_mat[i, i]
+        row_sum = conf_mat[i, :].sum()
+        col_sum = conf_mat[:, i].sum()
         tn_d[i] = total_samples - row_sum - col_sum + tp
 
     mask = np.ones(conf_mat.shape[0], dtype=bool)
@@ -68,7 +68,7 @@ def plot_results(data, conf_thresh, iou_thresh):
     plt.title(f"Simplified confusion matrix with confidence of {conf_thresh} and IOU of {iou_thresh}")
     plt.show()
 
-TPmean, FNmean, FPmean, TNmean = get_TP_FP_FN_TN(conf_mat_d, class_ignore=[8, 9, 10, 11])
+TPmean, FNmean, FPmean, TNmean = get_TP_FP_FN_TN(conf_mat_d, class_ignore=[0,1,7])
 data = np.array([[TPmean, TNmean], [FPmean, FNmean]])
 plot_results(data, conf_thresh, iou_thresh)
 

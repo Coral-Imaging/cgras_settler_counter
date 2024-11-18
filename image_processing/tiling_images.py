@@ -12,13 +12,17 @@ from PIL import Image
 from shapely.geometry import Polygon, box, MultiPolygon, GeometryCollection
 from shapely.validation import explain_validity
 
-full_res_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split2/train'
-save_path = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/train'
-#images in one folder, labels in another. Only want to do images with an associated label file
+full_res_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split2/valid/'
+save_path = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/valid'
+TILE_WIDTH= 640
+TILE_HEIGHT = 640
+TRUNCATE_PERCENT = 0.5
+
+#images in one folder, labels in another. Only want to do images with an ossociated label file
 imglist = sorted(glob.glob(os.path.join(full_res_dir, 'images', '*.jpg')))
 
-classes = ["Platy", "Acro", "recruit_asymbiotic", "recruit_asymbiotic_cluster", "recruit_symbiotic",
-           "recruit_symbiotic_cluster", "recruit_dead", "recruit_cluster_dead"]
+classes = ["recruit_live_white", "recruit_cluster_live_white", "recruit_symbiotic", "recruit_symbiotic_cluster", "recruit_partial",
+           "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown"]
 orange = [255, 128, 0] 
 blue = [0, 212, 255] 
 purple = [170, 0, 255] 
@@ -37,7 +41,10 @@ class_colours = {classes[0]: blue,
                 classes[4]: brown,
                 classes[5]: cyan,
                 classes[6]: orange,
-                classes[7]: red}
+                classes[7]: red,
+                classes[8]: dark_purple,
+                classes[9]: light_grey,
+                classes[10]: dark_green}
 
 
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
@@ -208,24 +215,23 @@ def visualise(imgname, save_path):
 
 max_files = 16382
 for i, img in enumerate(imglist):
-    if i < 555:
-        continue
-    if i > 0 and i+426 % max_files == 0:
-        directory_count += 1
-        save_img, save_labels = make_sub_dirctory_save(save_path)
+    #save_img, save_labels = make_sub_dirctory_save(save_path)
+    print(imglist[i])
     name = os.path.basename(img)[:-4]
     img_name = os.path.join(full_res_dir,'images', name+'.jpg')
     txt_name = os.path.join(full_res_dir,'labels', name+'.txt')
+    print(f"Looking for {txt_name}")
     if os.path.exists(txt_name):
         print(f'cutting image {i+1}/{len(imglist)}')
         cut(img_name, save_img, name, save_labels, txt_name, i)
     else:
         print("no text file for image")
 print("done")
-# vis_save_path = os.path.join(save_path, 'vis')
-# visualise(save_img, vis_save_path)
 import code
 code.interact(local=dict(globals(), **locals())) 
+# vis_save_path = os.path.join(save_path, 'vis')
+# visualise(save_img, vis_save_path)
+
 
 # ######### With one image #############
 # test_name = '00_20230116_MIS1_RC_Aspat_T04_08'

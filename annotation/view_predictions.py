@@ -22,12 +22,12 @@ batch_height, batch_width = 3000, 3000
 #weights_file_path = '/home/java/Java/ultralytics/runs/segment/train4/weights/best.pt' #trained on 640 imgsz
 # weights_file_path = '/home/java/Java/ultralytics/runs/segment/train5/weights/best.pt' #trained on 1280 imgsz
 #weight_file = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt" #dorian used
-weights_file_path = "/media/wardlewo/cslics_ssd/SCU_Pdae_Data/SCU_PDE_run/weights/best.pt" #trained on 640 imgsz dataset combined 22 and 23
+weights_file_path = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/ultralytics_output/train4/weights/best.pt' #trained on 640 imgsz dataset combined 22 and 23
 
-save_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/testsAndVisualisation/20241008_Pdae_Visualisation'
-img_folder = os.path.join('/media/wardlewo/cslics_ssd/SCU_Pdae_Data/RAWData/CutImages3x3/Combined')
+save_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/testsAndVisualisation/20243110_Pdae_Visualisation'
+img_folder = os.path.join('/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/test/images')
 #txt_folder = os.path.join(save_dir, 'train', 'labels')
-txt_folder = os.path.join('/media/wardlewo/cslics_ssd/SCU_Pdae_Data/RAWData/CutImages3x3/annotations_2024_09_10_yolov8 segmentation 1.0/labels/train')
+txt_folder = os.path.join('/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/test/labels')
 
 #save txt results like they would be saved by ultralytics
 def save_txt_predictions_masks(results, conf, class_list, save_path):
@@ -421,7 +421,6 @@ def save_image_predictions(results, image, imgname, save_path, classes, class_co
     imgsavename = os.path.basename(imgname)
     imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det.jpg')
     cv.imwrite(imgsave_path, image)
-
 
 for i, imgname in enumerate(imglist):
         print(f'predictions on {i+1}/{len(imglist)}')
