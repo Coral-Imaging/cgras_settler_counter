@@ -11,7 +11,7 @@ dependencies:
   - python=3.9
   - numpy
   - seaborn
-  - matplotlib
+
   - pip
   - pandas
   - pillow
