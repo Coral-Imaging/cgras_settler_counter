@@ -138,3 +138,4 @@ home/java/Java/data/cgras_20230421
 segmenter/cgras_Pdae_20230421.yaml
 segmenter/cgras_20230421.yaml
 image_processing/tiling_images.py
+segmenter/train_segmenter.py
