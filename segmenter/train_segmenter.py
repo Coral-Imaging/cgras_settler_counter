@@ -7,7 +7,7 @@ train basic yolov8 model for image segmentation
 from ultralytics import YOLO
 import torch
 
-data_file = '/home/wardlewo/Reggie/corals/cgras_settler_counter/segmenter/cgras_20230421.yaml'
+data_file = '/home/wardlewo/Reggie/corals/cgras_settler_counter/segmenter/cgras_Pdae_20230421.yaml'
 #data_file = sys.argv[1]
 
 # load model
@@ -23,7 +23,7 @@ model = YOLO('yolov8x-seg.pt').to(device)
 
 # classes arg is lightweight and simply ignore classes that are not included in the classes list, 
 # during train, val and predict, it has no effect on model architecture.
-model.train(data=data_file, epochs=1, batch=1,  classes=[0,1,2,3,6,7,8,9]) #test run
+model.train(data=data_file, epochs=1, batch=-1,  classes=[2,3,4,5,6,7], save_period=5) #test run
 #model.train(data=data_file, epochs=100, batch=-1, classes=[0,1,6,7,9,10], imgsz=1280, nbs=12)
 
 # print('Model Inference:')
