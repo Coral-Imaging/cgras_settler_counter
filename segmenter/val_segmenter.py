@@ -47,6 +47,29 @@ def get_TP_FP_FN_TN(conf_mat, class_ignore=None):
     TNmean = np.mean(TNR)
     return TPmean, FNmean, FPmean, TNmean
 
+
+def p_r_f1(conf_mat, class_ignore=None):
+    if class_ignore is None:
+        class_ignore = []
+    
+    mask = np.ones(conf_mat.shape[0], dtype=bool)
+    mask[class_ignore] = False
+
+    tp_d = conf_mat.diagonal()
+    fp_d = conf_mat.sum(1) - tp_d
+    fn_d = conf_mat.sum(0) - tp_d
+
+    precision = np.where((tp_d + fp_d) > 0, tp_d / (tp_d + fp_d), 0)[mask]
+    recall = np.where((tp_d + fn_d) > 0, tp_d / (tp_d + fn_d), 0)[mask]
+    F1 = np.where((precision + recall) > 0, 2 * precision * recall / (precision + recall), 0)
+
+    avg_precision = np.mean(precision)
+    avg_recall = np.mean(recall)
+    avg_F1 = np.mean(F1)
+
+    return avg_precision, avg_recall, avg_F1
+
+
 def plot_results(data, conf_thresh, iou_thresh):
     """plot_results
     Plot the data in a heatmap
@@ -74,6 +97,8 @@ TPmean, FNmean, FPmean, TNmean = get_TP_FP_FN_TN(conf_mat_d)
 data = np.array([[TPmean, TNmean], [FPmean, FNmean]])
 plot_results(data, conf_thresh, iou_thresh)
 
+precision, recall, F1 = p_r_f1(conf_mat_d, class_ignore=[2, 3, 4, 5, 6, 7, 8, 9, 10])
+print(precision, recall, F1)
 
 
 ## Visulise instances
