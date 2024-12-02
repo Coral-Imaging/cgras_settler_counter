@@ -1,4 +1,4 @@
-path: /mnt/hpccs01/home/terryj/data/resolution_test/120p/
+path: /mnt/hpccs01/home/terryj/data/resolution_test/480p/
 train:
   - train
 val:

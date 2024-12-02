@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-weights_file = '/home/java/Java/ultralytics/runs/segment/train21/weights/best.pt' #model
+weights_file = '/home/java/hpc-home/runs/640p_train_results/weights/best.pt' #model
 conf_thresh = 0.01
 iou_thresh = 0.6
 
@@ -70,16 +70,11 @@ tp_d, fp_d = metrics_d.confusion_matrix.tp_fp() # returns 2 arrays, 1xN where N 
 conf_mat_d = metrics_d.confusion_matrix.matrix #has the confusion matrix as NXN array
 conf_mat_normalised = conf_mat_d / (conf_mat_d.sum(0).reshape(1, -1) + 1E-9)
 
-metrics_max = model.val(conf=max(f1_d), iou=iou_thresh, plots=True)
-conf_mat_max = metrics_max.confusion_matrix.matrix
-
-TPmean, FNmean, FPmean, TNmean = get_TP_FP_FN_TN(conf_mat_d, class_ignore=[8, 9, 10, 11])
+TPmean, FNmean, FPmean, TNmean = get_TP_FP_FN_TN(conf_mat_d)
 data = np.array([[TPmean, TNmean], [FPmean, FNmean]])
 plot_results(data, conf_thresh, iou_thresh)
 
-TPmean, FNmean, FPmean, TNmean = get_TP_FP_FN_TN(conf_mat_max, class_ignore=[8, 9, 10, 11])
-data = np.array([[TPmean, TNmean], [FPmean, FNmean]])
-plot_results(data, max(f1_d), iou_thresh)
+
 
 ## Visulise instances
 
