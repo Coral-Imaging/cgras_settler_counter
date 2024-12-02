@@ -23,12 +23,12 @@ batch_height, batch_width = 3000, 3000
 # weights_file_path = '/home/java/Java/ultralytics/runs/segment/train5/weights/best.pt' #trained on 1280 imgsz
 #weight_file = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt" #dorian used
 #weights_file_path = "/home/java/Java/ultralytics/runs/segment/train21/weights/best.pt" #trained on 640 imgsz dataset combined 22 and 23
-weights_file_path = "/media/java/cslics_ssd/SCU_Pdae_Data/split and tilling/ultralytics_output/train4/weights/best.pt"
+weights_file_path = "/home/java/hpc-home/runs/640_v2/weights/best.pt"
 
-save_dir = '/media/java/cslics_ssd/SCU_Pdae_Data/testsAndVisualisation/20241029'
-img_folder = os.path.join('/media/java/cslics_ssd/SCU_Pdae_Data/RAWData/CutImages3x3/Combined')
+save_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/640_vis'
+img_folder = os.path.join('/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/640p/train/images')
 #txt_folder = os.path.join(save_dir, 'train', 'labels')
-txt_folder = os.path.join('/media/java/CGRAS-SSD/cgras_23_n_24_combined/split_24_09_19/test/labels')
+txt_folder = os.path.join('/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/640p/train/labels')
 
 #save txt results like they would be saved by ultralytics
 def save_txt_predictions_masks(results, conf, class_list, save_path):
@@ -331,7 +331,7 @@ if SAHI:
             image2 = plot_ground_truth(image, txt, classes, class_colours, 10, imgname)
             save_img_batch(image, updated_box_array, updated_conf_list, updated_class_id, updated_mask_list, os.path.basename(imgname), save_dir)
         else:
-            image = plot_ground_truth(image, txt, classes, class_colours, 2)
+            image = plot_ground_truth(image, txt, classes, class_colours, 2, imgname)
             save_img_sliced(slicer, image, imgname, save_dir)
 elif not ultralitics_version:
     for i, imgname in enumerate(imglist):
@@ -341,14 +341,16 @@ elif not ultralitics_version:
         #     import code
         #     code.interact(local=dict(globals(), **locals()))
         image = cv.imread(imgname)
+
+        import code
+        code.interact(local=dict(globals(), **locals()))
+        txt = txtlist[i]
         results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
         conf, class_list = [], [] 
         for j, b in enumerate(results[0].boxes):
             conf.append(b.conf.item())
             class_list.append(b.cls.item())
-        
-        txt = None
-        ground_truth = False
+        ground_truth = True
         save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours, ground_truth, txt)
 
 elif ultralitics_version: #ultralytics code
