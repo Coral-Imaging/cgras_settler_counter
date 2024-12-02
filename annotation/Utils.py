@@ -1,12 +1,14 @@
 #! /usr/bin/env/python3
 
 """
-Functions and varibles used for annotation and convertion to and from CVAT annotation style
+Functions and varibles used for annotation and convertion to and from CVAT annotation style 
+As well as hellper functions for viewing predictions and robowflow sahi.
 """
 
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
+import supervision as sv
 
 classes = ["recruit_live_white", "recruit_cluster_live_white", "recruit_symbiotic", "recruit_cluster_symbiotic", "recruit_partial",
            "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown"]
@@ -137,3 +139,91 @@ def poly_2_rle(points,
     rle_string = str_join.join(map(str, mask_rle))
     
     return rle_string, left, top, width, height
+
+def overlap_boxes(box1, box2):
+    """
+    Check if two axis-aligned bounding boxes overlap.
+
+    Args:
+        box1 (tuple or list): Coordinates of the first box in the form (x1, y1, x2, y2), 
+                              where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+        box2 (tuple or list): Coordinates of the second box in the same format as box1.
+
+    Returns:
+        bool: True if the boxes overlap, False otherwise.
+    """
+    x1, y1, x2, y2 = box1
+    x3, y3, x4, y4 = box2
+    if x1 > x4 or x3 > x2:
+        return False
+    if y1 > y4 or y3 > y2:
+        return False
+    return True
+
+def callback(image_slice: np.ndarray) -> sv.Detections:
+    """
+    Callback function for supervision slicer
+    Args:
+        image_slice: np.ndarray: a sliced image
+    Returns:
+        detections: supervisoon generated detections
+    """
+    results = model(image_slice)
+    try:
+        detections = sv.Detections.from_ultralytics(results[0])
+    except:
+        print("Error in callback")
+        import code
+        code.interact(local=dict(globals(), **locals()))
+    return detections
+
+#TODO functionlise / simplify?
+def combine_detections(box_array, conf_list, cls_id_list, mask_list):
+    updated_box_array, updated_conf_list, updated_class_id, updated_mask_list = [], [], [], []
+    overlap_count = 0
+    combined_indices = set()
+    for i, mask1 in enumerate(mask_list):
+        if i in combined_indices:
+            continue  # Skip already combined detections
+        box1 = box_array[i]
+        overlap = False
+        for j in range(i + 1, len(mask_list)):
+            if j in combined_indices or j<i:
+                continue
+            mask2 = mask_list[j]
+            box2 = box_array[j]
+            if overlap_boxes(box1, box2): #assume only pairs overlap
+                overlap = True
+                overlap_count += 1
+                new_box = [min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[2], box2[2]), max(box1[3], box2[3])]
+                new_class = cls_id_list[i] if conf_list[i] > conf_list[j] else cls_id_list[j]
+                new_conf = (conf_list[i] + conf_list[j]) / 2
+                mask1_tl_x, mask1_tl_y, mask1_w, mask1_h = mask1[1], mask1[2], mask1[3], mask1[4]
+                mask2_tl_x, mask2_tl_y, mask2_w, mask2_h = mask2[1], mask2[2], mask2[3], mask2[4]
+                # New mask
+                new_tl_x, new_tl_y = min(mask1_tl_x, mask2_tl_x), min(mask1_tl_y, mask2_tl_y)
+                new_w = max(mask1_tl_x + mask1_w, mask2_tl_x + mask2_w) - new_tl_x
+                new_h = max(mask1_tl_y + mask1_h, mask2_tl_y + mask2_h) - new_tl_y
+                new_mask = np.zeros((new_h, new_w), dtype=np.uint8)
+                mask1_x_offset = mask1_tl_x - new_tl_x
+                mask1_y_offset = mask1_tl_y - new_tl_y
+                new_mask[mask1_y_offset:mask1_y_offset + mask1_h, mask1_x_offset:mask1_x_offset + mask1_w] = mask1[0]
+                mask2_x_offset = mask2_tl_x - new_tl_x
+                mask2_y_offset = mask2_tl_y - new_tl_y
+                new_mask[mask2_y_offset:mask2_y_offset + mask2_h, mask2_x_offset:mask2_x_offset + mask2_w] = np.logical_or(
+                    new_mask[mask2_y_offset:mask2_y_offset + mask2_h, mask2_x_offset:mask2_x_offset + mask2_w], mask2[0]
+                ).astype(np.uint8)
+                #print(f"Combining {i} and {j}")
+                updated_box_array.append(new_box)
+                updated_conf_list.append(new_conf)
+                updated_class_id.append(new_class)
+                updated_mask_list.append((new_mask, new_tl_x, new_tl_y, new_w, new_h))
+                combined_indices.update([i, j])
+                break
+        if not overlap:
+            updated_box_array.append(box1)
+            updated_conf_list.append(conf_list[i])
+            updated_class_id.append(cls_id_list[i])
+            updated_mask_list.append(mask1)
+    updated_box_array = np.array(updated_box_array)
+    return updated_box_array, updated_conf_list, updated_class_id, updated_mask_list

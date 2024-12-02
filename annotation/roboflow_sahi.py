@@ -5,9 +5,6 @@ trying to use roboflow to annotate images for sahi segemntation
 following this blog https://blog.roboflow.com/how-to-use-sahi-to-detect-small-objects/ 
 """
 
-##TODO add to yaml setup file
-#pip install supervision <- actually needed
-
 import supervision as sv
 import numpy as np
 import cv2
@@ -21,98 +18,19 @@ import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element, SubElement, ElementTree
 import zipfile
 import torch
-from Utils import classes, class_colours, binary_mask_to_rle, rle_to_binary_mask
+from Utils import classes, class_colours, binary_mask_to_rle, rle_to_binary_mask, overlap_boxes, combine_detections, callback
 
-weight_file = '/home/java/Java/ultralytics/runs/segment/train10/weights/best.pt' #trained on labeled list iteration 1
-weight_file = '/home/java/Java/ultralytics/runs/segment/train12/weights/best.pt' #trained on labeled list iteration 1 with albmumentations
 weight_file = '/home/java/Java/ultralytics/runs/segment/train13/weights/best.pt' #trained on labeled list iteration 1 and 2 with albmumentations
-#weight_file = '/home/java/Java/ultralytics/runs/segment/train17/weights/best.pt' #trained on labeled list iteration 1 and 2 with albumentations no parital labels
 base_img_location = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/images'
 save_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/ultralytics_data_detections'
 base_file = "/home/java/Downloads/AugCgras/annotations.xml"
 output_filename = "/home/java/Downloads/cgras_2Aug20.xml"
+
 #list of images that have already been labeled
-labeled_images_iteration1 = [0, 1, 2, 3, 5, 
-                             100, 101, 102, 103, 104, 105, 106, 107, 108, 110, 112, 
-                             149] + list(range(370, 400)) + list(range(440, 470)) + list(range(550, 580)) +[650, 651, 652, 653, 658] + list(range(700, 724)) + [750, 774]
-labeled_images_iteration2 = list(range(6, 99)) + [109, 111, 113, 114, 115]
-labeled_images = labeled_images_iteration1 + labeled_images_iteration2
-intrested_images = [601, 602, 603, 629, 630, 631, 632, 633, 664, 665, 666, 667, 668, 669] #[506, 507, 508, 509, 510, 528, 529, 530, 531, 532, 581, 582, 583, 584, 585, 601, 602, 603, 606, 607, 608, 609, 610, 611, 629, 630, 631, 632, 633, 664, 665, 666, 667, 668, 669, 727, 728, 729, 730, 731] # range(inclusive, exclusive) #223 missed 
-#batch1 = list(range(339, 344)) + list(range(415, 419)) + list(range(474, 480)) + list(range(435, 330))
+labeled_images = list(range(6, 99)) + [109, 111, 113, 114, 115]
 max_img = 1000
 single_image = False #run roboflow sahi on one image and get detected segmentation results
-visualise = True #MOVED TO view_predictions.py
-
-## FUNCIONS
-def callback(image_slice: np.ndarray) -> sv.Detections:
-    results = model(image_slice)
-    try:
-        detections = sv.Detections.from_ultralytics(results[0])
-    except:
-        print("Error in callback")
-        import code
-        code.interact(local=dict(globals(), **locals()))
-    return detections
-
-def overlap_boxes(box1, box2):
-    x1, y1, x2, y2 = box1
-    x3, y3, x4, y4 = box2
-    if x1 > x4 or x3 > x2:
-        return False
-    if y1 > y4 or y3 > y2:
-        return False
-    return True
-
-#TODO functionlise / simplify?
-def combine_detections(box_array, conf_list, cls_id_list, mask_list):
-    updated_box_array, updated_conf_list, updated_class_id, updated_mask_list = [], [], [], []
-    overlap_count = 0
-    combined_indices = set()
-    for i, mask1 in enumerate(mask_list):
-        if i in combined_indices:
-            continue  # Skip already combined detections
-        box1 = box_array[i]
-        overlap = False
-        for j in range(i + 1, len(mask_list)):
-            if j in combined_indices or j<i:
-                continue
-            mask2 = mask_list[j]
-            box2 = box_array[j]
-            if overlap_boxes(box1, box2): #assume only pairs overlap
-                overlap = True
-                overlap_count += 1
-                new_box = [min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[2], box2[2]), max(box1[3], box2[3])]
-                new_class = cls_id_list[i] if conf_list[i] > conf_list[j] else cls_id_list[j]
-                new_conf = (conf_list[i] + conf_list[j]) / 2
-                mask1_tl_x, mask1_tl_y, mask1_w, mask1_h = mask1[1], mask1[2], mask1[3], mask1[4]
-                mask2_tl_x, mask2_tl_y, mask2_w, mask2_h = mask2[1], mask2[2], mask2[3], mask2[4]
-                # New mask
-                new_tl_x, new_tl_y = min(mask1_tl_x, mask2_tl_x), min(mask1_tl_y, mask2_tl_y)
-                new_w = max(mask1_tl_x + mask1_w, mask2_tl_x + mask2_w) - new_tl_x
-                new_h = max(mask1_tl_y + mask1_h, mask2_tl_y + mask2_h) - new_tl_y
-                new_mask = np.zeros((new_h, new_w), dtype=np.uint8)
-                mask1_x_offset = mask1_tl_x - new_tl_x
-                mask1_y_offset = mask1_tl_y - new_tl_y
-                new_mask[mask1_y_offset:mask1_y_offset + mask1_h, mask1_x_offset:mask1_x_offset + mask1_w] = mask1[0]
-                mask2_x_offset = mask2_tl_x - new_tl_x
-                mask2_y_offset = mask2_tl_y - new_tl_y
-                new_mask[mask2_y_offset:mask2_y_offset + mask2_h, mask2_x_offset:mask2_x_offset + mask2_w] = np.logical_or(
-                    new_mask[mask2_y_offset:mask2_y_offset + mask2_h, mask2_x_offset:mask2_x_offset + mask2_w], mask2[0]
-                ).astype(np.uint8)
-                print(f"Combining {i} and {j}")
-                updated_box_array.append(new_box)
-                updated_conf_list.append(new_conf)
-                updated_class_id.append(new_class)
-                updated_mask_list.append((new_mask, new_tl_x, new_tl_y, new_w, new_h))
-                combined_indices.update([i, j])
-                break
-        if not overlap:
-            updated_box_array.append(box1)
-            updated_conf_list.append(conf_list[i])
-            updated_class_id.append(cls_id_list[i])
-            updated_mask_list.append(mask1)
-    updated_box_array = np.array(updated_box_array)
-    return updated_box_array, updated_conf_list, updated_class_id, updated_mask_list
+image_file = "/home/java/Java/data/cgras_20231028/images/2712-4-1-1-0-231220-1249.jpg"
 
 ## OBJECTS
 model = YOLO(weight_file)
@@ -332,6 +250,20 @@ class Predict2Cvat:
                     file.write(str(item) + ' ')
                 file.write('\n')
 
+    def copy_label(image_element):
+        print("skipping image, as already labeled")
+        for mask in image_element.findall('.//mask'):
+            mask_elem = SubElement(new_elem, 'mask')
+            mask_elem.set('label', mask.get('label'))
+            mask_elem.set('source', mask.get('source'))
+            mask_elem.set('occluded', mask.get('occluded'))
+            mask_elem.set('rle', mask.get('rle'))
+            mask_elem.set('left', mask.get('left'))
+            mask_elem.set('top', mask.get('top'))
+            mask_elem.set('width', mask.get('width'))
+            mask_elem.set('height', mask.get('height'))
+            mask_elem.set('z_order', mask.get('z_order'))
+
     def run(self):
         new_tree, root = self.tree_setup()
 
@@ -353,20 +285,8 @@ class Predict2Cvat:
             new_elem.set('width', str(image_width))
             new_elem.set('height', str(image_height))
 
-            if self.label_img_no is not None and i not in self.label_img_no: #only label images in the list
-                #(self.label_img_no is not None and i in self.label_img_no) or i<113 or i>=114: #don't overwrite already labeled images
-                print("skipping image, as already labeled")
-                for mask in image_element.findall('.//mask'):
-                    mask_elem = SubElement(new_elem, 'mask')
-                    mask_elem.set('label', mask.get('label'))
-                    mask_elem.set('source', mask.get('source'))
-                    mask_elem.set('occluded', mask.get('occluded'))
-                    mask_elem.set('rle', mask.get('rle'))
-                    mask_elem.set('left', mask.get('left'))
-                    mask_elem.set('top', mask.get('top'))
-                    mask_elem.set('width', mask.get('width'))
-                    mask_elem.set('height', mask.get('height'))
-                    mask_elem.set('z_order', mask.get('z_order'))
+            if self.label_img_no is not None and i in self.label_img_no: #don't relabel alreadylabeled images
+                self.copy_label(image_element)
                 continue
 
             image_file = os.path.join(self.img_location, image_name)
@@ -443,67 +363,22 @@ class Predict2Cvat:
 
 
 print("Detecting corals and saving to annotation format")
-Det = Predict2Cvat(base_img_location, output_filename, weight_file, base_file, save_img=True, max_img=max_img, label_img_no=intrested_images)
+Det = Predict2Cvat(base_img_location, output_filename, weight_file, base_file, save_img=True, max_img=max_img, label_img_no=labeled_images)
 Det.run()
 print("Done detecting corals")
 
 import code
 code.interact(local=dict(globals(), **locals()))
 
-
-def save_img(image_cv, box_array, conf_list, cls_id_list, mask_list, image_name, save_dir):
-    height, width, _ = image_cv.shape
-    masked = image_cv.copy()
-    line_tickness = int(round(width)/600)
-    font_size = 2#int(round(line_tickness/2))
-    font_thickness = 5#3*(abs(line_tickness-font_size))+font_size
-    if conf_list is not None:
-        for j, m in enumerate(mask_list):
-            contours, _ = cv2.findContours(m[0], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
-            for contour in contours:
-                points = np.squeeze(contour)
-                if len(points.shape) == 1:
-                    points = points.reshape(-1, 1, 2)
-                elif len(points.shape) == 2 and points.shape[1] != 2:
-                    points = points.reshape(-1, 1, 2)
-                points += np.array([m[1], m[2]]) #shift the points to the correct location
-                cls = classes[int(cls_id_list[j])]
-                desired_color = class_colours[cls]
-                if points is None or not points.any() or len(points) == 0:
-                    print(f'mask {j} encountered problem with points {points}, class is {cls}')
-                else: 
-                    cv2.fillPoly(masked, [points], desired_color) 
-        for t, b in enumerate(box_array):
-            cls = classes[int(cls_id_list[t])]
-            desired_color = class_colours[cls]
-            cv2.putText(image_cv, f"{conf_list[t]:.2f}: {cls}", (int(b[0]-20), int(b[1] - 5)), cv2.FONT_HERSHEY_SIMPLEX, font_size, desired_color, font_thickness)
-    else:
-        print(f'No masks found in {image_name}')
-    alpha = 0.5
-    semi_transparent_mask = cv2.addWeighted(image_cv, 1-alpha, masked, alpha, 0)
-    imgsavename = os.path.basename(image_name)
-    imgsave_path = os.path.join(save_dir, imgsavename[:-4] + '_det_mask.jpg')
-    cv2.imwrite(imgsave_path, semi_transparent_mask)
-
-
-## Visualise Detections on images
-if visualise:
-    print("Moved to view_predictions.py")
-
-
 ### Single image check and test
 if single_image:
-    image_file = "/home/java/Java/data/cgras_20231028/images/2712-4-1-1-0-231220-1249.jpg"
     image = cv2.imread(image_file)
-
     start_time = time.time()
     sliced_detections = slicer(image=image)
     end_time = time.time()
 
     annotated_image = mask_annotator.annotate(scene=image.copy(), detections=sliced_detections)
-
     sv.plot_image(annotated_image) #visualise all the detections
-
     duration = end_time - start_time
     print('slice run time: {} sec'.format(duration))
     print('slice run time: {} min'.format(duration / 60.0))

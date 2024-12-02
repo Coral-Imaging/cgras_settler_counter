@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """Code used or developed to do resolution test"""
 
 import os
