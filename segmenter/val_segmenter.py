@@ -37,10 +37,10 @@ def get_TP_FP_FN_TN(conf_mat, class_ignore=None):
     mask = np.ones(conf_mat.shape[0], dtype=bool)
     mask[class_ignore] = False
 
-    TPR = np.where((tp_d+ fn_d) != 0, tp_d/ (tp_d+ fn_d), 0)[mask]
-    FNR = np.where((tp_d+ fn_d) != 0, fn_d / (tp_d+ fn_d), 0)[mask]
-    FPR = np.where((fp_d+ tn_d) != 0, fp_d/ (fp_d+ tn_d), 0)[mask]
-    TNR = np.where((fp_d+ tn_d) != 0, tn_d / (fp_d+ tn_d), 0)[mask]
+    TPR = np.where((tp_d+ fn_d) > 0, tp_d/ (tp_d+ fn_d), 0)[mask]
+    FNR = np.where((tp_d+ fn_d) > 0, fn_d / (tp_d+ fn_d), 0)[mask]
+    FPR = np.where((fp_d+ tn_d) > 0, fp_d/ (fp_d+ tn_d), 0)[mask]
+    TNR = np.where((fp_d+ tn_d) > 0, tn_d / (fp_d+ tn_d), 0)[mask]
     TPmean = np.mean(TPR)
     FNmean = np.mean(FNR)
     FPmean = np.mean(FPR)

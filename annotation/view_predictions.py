@@ -19,10 +19,12 @@ SAHI = False #set to true if using SAHI to look at 640p images
 batch = False #image too big / too many predictions to do in one go
 batch_height, batch_width = 3000, 3000
 #weight_file = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt" #dorian used
+#weights_file_path = "/home/java/Java/ultralytics/runs/segment/train21/weights/best.pt" #trained on 640 imgsz dataset combined 22 and 23
 weights_file_path = "/media/java/cslics_ssd/SCU_Pdae_Data/split and tilling/ultralytics_output/train4/weights/best.pt"
 
 save_dir = '/media/java/cslics_ssd/SCU_Pdae_Data/testsAndVisualisation/20241029'
 img_folder = os.path.join('/media/java/cslics_ssd/SCU_Pdae_Data/RAWData/CutImages3x3/Combined')
+#txt_folder = os.path.join(save_dir, 'train', 'labels')
 txt_folder = os.path.join('/media/java/CGRAS-SSD/cgras_23_n_24_combined/split_24_09_19/test/labels')
 
 #save txt results like they would be saved by ultralytics
@@ -250,14 +252,16 @@ elif not ultralitics_version:
     for i, imgname in enumerate(imglist):
         print(f'predictions on {i+1}/{len(imglist)}')
         image = cv.imread(imgname)
+
+        import code
+        code.interact(local=dict(globals(), **locals()))
+        txt = txtlist[i]
         results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
         conf, class_list = [], [] 
         for j, b in enumerate(results[0].boxes):
             conf.append(b.conf.item())
             class_list.append(b.cls.item())
-        
-        txt = None
-        ground_truth = False
+        ground_truth = True
         save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours, ground_truth, txt)
 
 elif ultralitics_version: #ultralytics code
