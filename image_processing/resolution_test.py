@@ -41,7 +41,7 @@ def resize_images(image_dir, save_dir, new_size):
     print(f"Copied {len(imgs)} images to {save_dir}")
         
 def copy_txt(txt_import_dir, txt_export_dir):
-    """copy txts from one top directory to another"""
+    """copy txts from one top directory to another keeping train, test and validation split"""
     txts = sorted(glob.glob(os.path.join(txt_import_dir, '*/labels/*.txt')))
     for txt_path in txts:
         subfolder = txt_path.split('/')[-3] 
@@ -53,16 +53,37 @@ def copy_txt(txt_import_dir, txt_export_dir):
     
     print(f"Copied {len(txts)} txts to {txt_export_dir}")
 
+#TODO make full function 
+def reshuffle(import_dir, export_dir):
+    """Assumed splitfiles run after this"""
+    imgs = sorted(glob.glob(os.path.join(import_dir, '*/images/*.jpg')))
+    txts = sorted(glob.glob(os.path.join(import_dir, '*/labels/*.txt')))
+    for txt_path in txts:
+        txt_name = os.path.basename(txt_path)
+        subfolder_path = os.path.join(export_dir, 'labels')
+        os.makedirs(subfolder_path, exist_ok=True)
+        shutil.copy(txt_path, subfolder_path)
+    print(f"Copied {len(txts)} txts to {export_dir}")
+    for img_path in imgs:
+        img_name = os.path.basename(img_path)
+        subfolder_path = os.path.join(export_dir, 'images')
+        os.makedirs(subfolder_path, exist_ok=True)
+        shutil.copy(img_path, subfolder_path)
+    print(f"Copied {len(imgs)} imgs to {export_dir}")
+
 
 import_dir_imgs = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras20240826/valid/images"
 txt_files_dri = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/640p/val/labels"
 export_dir_imgs = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/640p/val/images"
-#copy_images_from_txt_list
-#(import_dir_imgs, export_dir_imgs, txt_files_dri)
+#copy_images_from_txt_list(import_dir_imgs, export_dir_imgs, txt_files_dri)
 
-imgs_640p = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/640p/"
-new_size = 480
-save_dir = f"/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/{new_size}p/"
-os.makedirs(save_dir, exist_ok=True)
-resize_images(imgs_640p, save_dir, new_size)
-copy_txt(imgs_640p, save_dir)
+# imgs_640p = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/640p/"
+# new_size = 480
+# save_dir = f"/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/{new_size}p/"
+# os.makedirs(save_dir, exist_ok=True)
+# resize_images(imgs_640p, save_dir, new_size)
+# copy_txt(imgs_640p, save_dir)
+
+import_dir = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/640p"
+export_dir = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/640p_not_split"
+reshuffle(import_dir, export_dir)
