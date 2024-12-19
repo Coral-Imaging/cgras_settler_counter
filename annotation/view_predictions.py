@@ -20,12 +20,12 @@ batch = False #image too big / too many predictions to do in one go
 batch_height, batch_width = 3000, 3000
 #weight_file = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt" #dorian used
 #weights_file_path = "/home/java/Java/ultralytics/runs/segment/train21/weights/best.pt" #trained on 640 imgsz dataset combined 22 and 23
-weights_file_path = "/media/java/cslics_ssd/SCU_Pdae_Data/split and tilling/ultralytics_output/train4/weights/best.pt"
+weights_file_path = "/home/java/hpc-home/runs/240p_v8m_results/weights/best.pt"
 
-save_dir = '/media/java/cslics_ssd/SCU_Pdae_Data/testsAndVisualisation/20241029'
-img_folder = os.path.join('/media/java/cslics_ssd/SCU_Pdae_Data/RAWData/CutImages3x3/Combined')
+save_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/check_gt_UPDATED'
+img_folder = os.path.join('/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/images')
 #txt_folder = os.path.join(save_dir, 'train', 'labels')
-txt_folder = os.path.join('/media/java/CGRAS-SSD/cgras_23_n_24_combined/split_24_09_19/test/labels')
+txt_folder = os.path.join('/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/labels')
 
 #save txt results like they would be saved by ultralytics
 def save_txt_predictions_masks(results, conf, class_list, save_path):
@@ -73,6 +73,12 @@ def add_ground_truth(image, txt, classes, class_colours, line_tickness, imgname)
     for idx in range(len(class_idx)):
         pointers = np.array(points[idx], np.int32).reshape(-1,2)
         cv.polylines(image, [pointers], True, class_colours[classes[class_idx[idx]]], line_tickness)
+            cls_name = classes[class_idx[idx]]
+            try:
+                cv.putText(image, f"{cls_name}", (int(np.min(pointers[:, 0])-20), int(np.min(pointers[:, 1]) - 5)), cv.FONT_HERSHEY_SIMPLEX, 3, class_colours[classes[class_idx[idx]]], 3)
+            except:
+                import code
+                code.interact(local=dict(globals(), **locals()))
     return image
 
 def save_image_predictions_mask(results, image, imgname, save_path, conf, class_list, classes, class_colours, ground_truth=False, txt=None):
@@ -109,7 +115,7 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
     alpha = 0.5
     semi_transparent_mask = cv.addWeighted(image, 1-alpha, masked, alpha, 0)
     imgsavename = os.path.basename(imgname)
-    imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det_mask.jpg')
+    imgsave_path = os.path.join(save_dir, imgsavename[:-4] + '_det_mask.jpg')
     cv.imwrite(imgsave_path, semi_transparent_mask)
 
     # import code
@@ -253,16 +259,20 @@ elif not ultralitics_version:
         print(f'predictions on {i+1}/{len(imglist)}')
         image = cv.imread(imgname)
 
-        import code
-        code.interact(local=dict(globals(), **locals()))
         txt = txtlist[i]
-        results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
-        conf, class_list = [], [] 
-        for j, b in enumerate(results[0].boxes):
-            conf.append(b.conf.item())
-            class_list.append(b.cls.item())
+        # results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
+        # conf, class_list = [], [] 
+        # for j, b in enumerate(results[0].boxes):
+        #     conf.append(b.conf.item())
+        #     class_list.append(b.cls.item())
         ground_truth = True
-        save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours, ground_truth, txt)
+        #save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours, ground_truth, txt)
+        image = add_ground_truth(image, txt, classes, class_colours, 4, imgname)
+        imgsave_path = os.path.join(save_dir, os.path.basename(imgname)[:-4] + '_det_mask.jpg')
+        cv.imwrite(imgsave_path, image)
+
+        # import code
+        # code.interact(local=dict(globals(), **locals()))
 
 elif ultralitics_version: #ultralytics code
     for i, imgname in enumerate(imglist):

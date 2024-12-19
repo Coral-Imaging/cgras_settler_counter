@@ -11,7 +11,10 @@ import matplotlib.pyplot as plt
 import supervision as sv
 
 classes = ["recruit_live_white", "recruit_cluster_live_white", "recruit_symbiotic", "recruit_cluster_symbiotic", "recruit_partial",
-           "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown"]
+           "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown"] #how its in cvat
+
+classes = ["0", "1", "2", "3", "4",
+           "5", "6", "7", "8", "9", "10"]
 
 orange = [255, 128, 0] 
 blue = [0, 212, 255] 

@@ -54,7 +54,7 @@ def copy_txt(txt_import_dir, txt_export_dir):
     print(f"Copied {len(txts)} txts to {txt_export_dir}")
 
 #TODO make full function 
-def reshuffle(import_dir, export_dir):
+def unsplit(import_dir, export_dir):
     """Assumed splitfiles run after this"""
     imgs = sorted(glob.glob(os.path.join(import_dir, '*/images/*.jpg')))
     txts = sorted(glob.glob(os.path.join(import_dir, '*/labels/*.txt')))
@@ -84,6 +84,6 @@ export_dir_imgs = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resol
 # resize_images(imgs_640p, save_dir, new_size)
 # copy_txt(imgs_640p, save_dir)
 
-import_dir = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/640p"
-export_dir = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/640p_not_split"
-reshuffle(import_dir, export_dir)
+import_dir = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/120p"
+export_dir = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/resolution_test/120p_not_split"
+unsplit(import_dir, export_dir)
