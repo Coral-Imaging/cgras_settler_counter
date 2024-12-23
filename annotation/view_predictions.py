@@ -16,15 +16,21 @@ import supervision as sv
 
 ultralitics_version = False #set to true, if want example of ultralitics prediction
 SAHI = False #set to true if using SAHI to look at 640p images
+batch = True #image too big / too many predictions to do in one go
+SAHI = False #set to true if using SAHI to look at 640p images
 batch = False #image too big / too many predictions to do in one go
 batch_height, batch_width = 3000, 3000
 #weight_file = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt" #dorian used
+weights_file_path = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/ultralytics_output/train4/weights/best.pt' #trained on 640 imgsz dataset combined 22 and 23
 #weights_file_path = "/home/java/Java/ultralytics/runs/segment/train21/weights/best.pt" #trained on 640 imgsz dataset combined 22 and 23
 weights_file_path = "/home/java/hpc-home/runs/240p_v8m_results/weights/best.pt"
 
+save_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/testsAndVisualisation/20243110_Pdae_Visualisation'
+img_folder = os.path.join('/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/test/images')
 save_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/check_gt_UPDATED'
 img_folder = os.path.join('/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/images')
 #txt_folder = os.path.join(save_dir, 'train', 'labels')
+txt_folder = os.path.join('/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/test/labels')
 txt_folder = os.path.join('/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/labels')
 
 #save txt results like they would be saved by ultralytics
@@ -73,6 +79,9 @@ def add_ground_truth(image, txt, classes, class_colours, line_tickness, imgname)
     for idx in range(len(class_idx)):
         pointers = np.array(points[idx], np.int32).reshape(-1,2)
         cv.polylines(image, [pointers], True, class_colours[classes[class_idx[idx]]], line_tickness)
+    # imgsave_path = os.path.join(save_dir, os.path.basename(imgname)[:-4] + '_gt.jpg')
+    # cv.imwrite(imgsave_path, image)
+    print(f'number of ground truth annotiations: {len(points)}')
             cls_name = classes[class_idx[idx]]
             try:
                 cv.putText(image, f"{cls_name}", (int(np.min(pointers[:, 0])-20), int(np.min(pointers[:, 1]) - 5)), cv.FONT_HERSHEY_SIMPLEX, 3, class_colours[classes[class_idx[idx]]], 3)
@@ -110,6 +119,7 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
         print(f'No masks found in {imgname}')
     
     if ground_truth & (txt is not None):
+        image = plot_ground_truth(image, txt, classes, class_colours, line_tickness, imgname)        
         image = add_ground_truth(image, txt, classes, class_colours, line_tickness)
 
     alpha = 0.5
@@ -221,6 +231,26 @@ txtlist = sorted(glob.glob(os.path.join(txt_folder, '*.txt')))
 imgsave_dir = save_dir
 os.makedirs(imgsave_dir, exist_ok=True)
 
+if not ultralitics_version:
+    for i, imgname in enumerate(imglist):
+        print(f'predictions on {i+1}/{len(imglist)}')
+        if i >= 500: # for debugging purposes
+            break 
+            import code
+            code.interact(local=dict(globals(), **locals()))
+        
+        image = cv.imread(imgname)
+        results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
+        conf, class_list = [], [] 
+        for j, b in enumerate(results[0].boxes):
+            conf.append(b.conf.item())
+            class_list.append(b.cls.item())
+        
+        txt = txtlist[i]
+        ground_truth = True
+        save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours, ground_truth, txt)
+
+
 if SAHI:
     for i, imgname in enumerate(imglist):
         print(f'SHAI predictions on {i+1}/{len(imglist)}')
@@ -254,6 +284,10 @@ if SAHI:
         else:
             image = add_ground_truth(image, txt, classes, class_colours, 2)
             save_img_sliced(slicer, image, imgname, save_dir)
+
+
+
+if ultralitics_version: #ultralytics code
 elif not ultralitics_version:
     for i, imgname in enumerate(imglist):
         print(f'predictions on {i+1}/{len(imglist)}')
@@ -296,8 +330,6 @@ print("for bounding boxes below")
 import code
 code.interact(local=dict(globals(), **locals()))
 
-
-
 def save_image_predictions(results, image, imgname, save_path, classes, class_colours, ground_truth=False, txt=None):
     """save_image_predictions
     saves the predicted bb results onto an image, recoring confidence and class as well. 
@@ -334,15 +366,16 @@ def save_image_predictions(results, image, imgname, save_path, classes, class_co
     imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det.jpg')
     cv.imwrite(imgsave_path, image)
 
-
 for i, imgname in enumerate(imglist):
         print(f'predictions on {i+1}/{len(imglist)}')
-        if i >= 10: # for debugging purposes
-            break 
-            import code
-            code.interact(local=dict(globals(), **locals()))
+        #if i >= 10: # for debugging purposes
+        #    break 
+        #    import code
+        #    code.interact(local=dict(globals(), **locals()))
         image = cv.imread(imgname)
         results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
+        
+        results = []
         
         txt = txtlist[i]
         ground_truth = True

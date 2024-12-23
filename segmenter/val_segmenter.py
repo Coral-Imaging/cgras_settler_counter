@@ -10,12 +10,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-weights_file = '/home/java/hpc-home/runs/640p_train_results/weights/best.pt' #model
-conf_thresh = 0.01
+weights_file = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/best_model+results/weights/best.pt' #model
+conf_thresh = 0.25
 iou_thresh = 0.6
 
+# Load a model
+model = YOLO(weights_file)
 
-def get_TP_FP_FN_TN(conf_mat, class_ignore=None):
+# Validate the model
+#if not arguments, will use the defult arguments and validate on the Val files of the model trained dataset.
+metrics_d = model.val(conf=conf_thresh, iou=iou_thresh, project = "/home/wardlewo/Reggie/ultralytics_output/", data='/media/wardlewo/cslics_ssd/SCU_Pdae_Data/reduced_negs_dataset/cgras_Pdae_20241126.yaml', plots=True) #data='/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/cgras_20230421.yaml',
+
+tp_d, fp_d = metrics_d.confusion_matrix.tp_fp() # returns 2 arrays, 1xN where N is the number of classes.
+conf_mat_d = metrics_d.confusion_matrix.matrix #has the confusion matrix as NXN array
+conf_mat_normalised = conf_mat_d / (conf_mat_d.sum(0).reshape(1, -1) + 1E-9)
+
+def get_TP_FP_FN_TN(conf_mat, class_ignore):
     """get_TP_FP_FN_TN
         Get the average True Positive, False Positive, False Negative and True Negative 
         rates for the confusion matrix ignoring the classes in class_ignore.
@@ -23,6 +33,15 @@ def get_TP_FP_FN_TN(conf_mat, class_ignore=None):
     if class_ignore is None:
         class_ignore = []
     
+    tp_d = conf_mat.diagonal()
+    fp_d = conf_mat.sum(1) - tp_d
+    fn_d = conf_mat.sum(0) - tp_d
+    total_samples = conf_mat.sum()
+    tn_d = np.zeros(conf_mat.shape[0])
+    for i in range(conf_mat.shape[0]):
+        tp = conf_mat[i, i]
+        row_sum = conf_mat[i, :].sum()
+        col_sum = conf_mat[:, i].sum()
     tp_d = conf_mat.diagonal()
     fp_d = conf_mat.sum(1) - tp_d
     fn_d = conf_mat.sum(0) - tp_d
@@ -81,19 +100,7 @@ def plot_results(data, conf_thresh, iou_thresh):
     plt.title(f"Simplified confusion matrix with confidence of {conf_thresh:.2f} and IOU of {iou_thresh:.2f}")
     plt.show()
 
-
-# Load a model
-model = YOLO(weights_file)
-
-## Validate the model
-#if not arguments, will use the defult arguments and validate on the Val files of the model trained dataset.
-metrics_d = model.val(plots=True) #DEFAULT, conf=0.001, iou=0.6 #data='/home/java/Java/Cgras/cgras_settler_counter/segmenter/cgras_20230421.yaml',
-f1_d = metrics_d.box.f1  # F1 score for each class
-tp_d, fp_d = metrics_d.confusion_matrix.tp_fp() # returns 2 arrays, 1xN where N is the number of classes.
-conf_mat_d = metrics_d.confusion_matrix.matrix #has the confusion matrix as NXN array
-conf_mat_normalised = conf_mat_d / (conf_mat_d.sum(0).reshape(1, -1) + 1E-9)
-
-TPmean, FNmean, FPmean, TNmean = get_TP_FP_FN_TN(conf_mat_d)
+TPmean, FNmean, FPmean, TNmean = get_TP_FP_FN_TN(conf_mat_d, class_ignore=[0,1,7])
 data = np.array([[TPmean, TNmean], [FPmean, FNmean]])
 plot_results(data, conf_thresh, iou_thresh)
 
