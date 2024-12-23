@@ -49,10 +49,10 @@ class_colours = {classes[0]: blue,
 
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
 
-directory_count = 4
+directory_count = 0
 
-def make_sub_dirctory_save(save_path):
-    save_train = os.path.join(save_path, f'train_{directory_count}')
+def make_sub_dirctory_save(prefix, save_path):
+    save_train = os.path.join(save_path, f'{prefix}_{directory_count}')
     os.makedirs(save_path, exist_ok=True)
     os.makedirs(save_train, exist_ok=True)
     save_images = os.path.join(save_train, 'images')

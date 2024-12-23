@@ -7,11 +7,16 @@ train basic yolov8 model for image segmentation
 from ultralytics import YOLO
 import torch
 
+data_file = '/home/terryj/cgras_settler_counter/segmenter/cgras_hpc.yaml'
+weights = '/home/terryj/runs/train13/weights/last.pt'
+data_file = '/home/terryj/cgras_settler_counter/segmenter/cgras_hpc.yaml'
 data_file = '/home/wardlewo/Reggie/corals/cgras_settler_counter/segmenter/cgras_Pdae_20230421.yaml'
 #data_file = sys.argv[1]
 
 # load model
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+model = YOLO(weights).to(device)
+model = YOLO('yolov8x-seg.pt').to(device)
 model = YOLO('yolov8x-seg.pt').to(device)
              #/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt').to(device)
 
