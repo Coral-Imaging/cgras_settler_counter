@@ -14,14 +14,14 @@ train_ratio = 0.70
 test_ratio = 0.15
 valid_ratio = 0.15
 
-data_locaton1 = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data'
+data_locaton1 = '/media/wardlewo/cslics_ssd/cgras_datasets/cgras_data_copied_2240605_ultralytics_data'
 data_locaton2 = '/media/java/cslics_ssd/cgras_datasets/cgras_dataset_20230421_100images/train'
-save_dir_for_split = '/media/java/CGRAS-SSD/cgras_23_n_24_combined/split_24_09_19' 
+save_dir_for_split = '/media/wardlewo/cslics_ssd/cgras_datasets/Seg+ClassTester' 
 
 os.makedirs(save_dir_for_split, exist_ok=True)
 
-imagelist = glob.glob(os.path.join(data_locaton+'/images', '*.jpg'))
-txtlist = glob.glob(os.path.join(data_locaton+'/labels', '*.txt'))
+imagelist = glob.glob(os.path.join(data_locaton1+'/images', '*.jpg'))
+txtlist = glob.glob(os.path.join(data_locaton1+'/labels', '*.txt'))
 txtlist.sort()
 imagelist.sort()
 imgno = len(txtlist) 

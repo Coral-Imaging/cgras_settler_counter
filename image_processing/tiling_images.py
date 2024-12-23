@@ -12,8 +12,8 @@ from PIL import Image
 from shapely.geometry import Polygon, box, MultiPolygon, GeometryCollection
 from shapely.validation import explain_validity
 
-full_res_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split2/valid/'
-save_path = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/valid'
+full_res_dir = '//media/wardlewo/cslics_ssd/cgras_datasets/Seg+ClassTester/dataset_full_Images/valid'
+save_path = '/media/wardlewo/cslics_ssd/cgras_datasets/Seg+ClassTester/tilledImages/valid'
 TILE_WIDTH= 640
 TILE_HEIGHT = 640
 TRUNCATE_PERCENT = 0.5

@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-weights_file = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/ultralytics_output/train4/weights/best.pt' #model
+weights_file = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/best_model+results/weights/best.pt' #model
 conf_thresh = 0.25
 iou_thresh = 0.6
 
@@ -19,7 +19,7 @@ model = YOLO(weights_file)
 
 # Validate the model
 #if not arguments, will use the defult arguments and validate on the Val files of the model trained dataset.
-metrics_d = model.val(conf=conf_thresh, iou=iou_thresh, project = "/home/wardlewo/Reggie/ultralytics_output/", data='/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/cgras_Pdae_20230421.yaml', plots=True) #data='/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/cgras_20230421.yaml',
+metrics_d = model.val(conf=conf_thresh, iou=iou_thresh, project = "/home/wardlewo/Reggie/ultralytics_output/", data='/media/wardlewo/cslics_ssd/SCU_Pdae_Data/reduced_negs_dataset/cgras_Pdae_20241126.yaml', plots=True) #data='/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/cgras_20230421.yaml',
 
 tp_d, fp_d = metrics_d.confusion_matrix.tp_fp() # returns 2 arrays, 1xN where N is the number of classes.
 conf_mat_d = metrics_d.confusion_matrix.matrix #has the confusion matrix as NXN array
