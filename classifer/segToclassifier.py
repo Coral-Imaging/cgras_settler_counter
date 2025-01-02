@@ -4,6 +4,9 @@ from pathlib import Path
 import cv2
 from tqdm import tqdm
 
+classes = ["recruit_live_white", "recruit_cluster_live_white", "recruit_symbiotic", "recruit_cluster_symbiotic", "recruit_partial",
+           "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown"] 
+
 
 def process_labels_and_images(label_dir, image_dir, output_dir, output_json_path):
     """
@@ -75,7 +78,7 @@ def process_labels_and_images(label_dir, image_dir, output_dir, output_json_path
                     cropped = image[y_min:y_max, x_min:x_max]
 
                     # Save cropped image
-                    class_dir = os.path.join(output_dir, f"class_{class_id}")
+                    class_dir = os.path.join(output_dir, classes[int(class_id)])
                     os.makedirs(class_dir, exist_ok=True)
 
                     crop_filename = f"{label_file.stem}_{i}_img.jpg"
@@ -100,8 +103,8 @@ def process_labels_and_images(label_dir, image_dir, output_dir, output_json_path
 
 # Example usage
 if __name__ == "__main__":
-    label_dir = "/media/wardlewo/cslics_ssd/cgras_datasets/Seg+ClassTester/train/labels"  
-    image_dir = "/media/wardlewo/cslics_ssd/cgras_datasets/Seg+ClassTester/train/images" 
-    output_dir = "/media/wardlewo/cslics_ssd/cgras_datasets/Seg+ClassTester/train"  
+    label_dir = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/labels"  
+    image_dir = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/images" 
+    output_dir = "/home/java/hpc-home/data/Seg+ClassTester/class_with_fixed_labels"  
     output_json_path = os.path.join(output_dir, "classifier_data.json")
     process_labels_and_images(label_dir, image_dir, output_dir, output_json_path)
