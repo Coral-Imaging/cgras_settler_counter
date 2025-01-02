@@ -18,33 +18,7 @@ from xml.etree.ElementTree import Element, SubElement, ElementTree
 import zipfile
 import matplotlib.pyplot as plt
 import time
-
-##TODO: import from Utils in annnotations?
-classes = ["recruit_live_white", "recruit_cluster_live_white", "recruit_symbiotic", "recruit_symbiotic_cluster", "recruit_partial",
-           "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown", "combined"]
-orange = [255, 128, 0] 
-blue = [0, 212, 255] 
-purple = [170, 0, 255] 
-yellow = [255, 255, 0] 
-brown = [144, 65, 2] 
-green = [0, 255, 00] 
-red = [255, 0, 0]
-cyan = [0, 255, 255]
-dark_purple =  [128, 0, 128]
-light_grey =  [192, 192, 192] 
-dark_green = [0, 100, 0] 
-class_colours = {classes[0]: blue,
-                classes[1]: green,
-                classes[2]: purple,
-                classes[3]: yellow,
-                classes[4]: brown,
-                classes[5]: cyan,
-                classes[6]: orange,
-                classes[7]: red,
-                classes[8]: dark_purple,
-                classes[9]: light_grey,
-                classes[10]: dark_green,
-                classes[11]: brown}
+from annotation.Utils import classes, class_colours
 
 ######### Constants and directories #############
 TILE_WIDTH= 640

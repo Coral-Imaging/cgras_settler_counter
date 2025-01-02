@@ -9,7 +9,7 @@ from xml.etree.ElementTree import Element, SubElement, ElementTree
 import code
 import matplotlib.pyplot as plt
 import zipfile
-from Utils import binary_mask_to_rle, poly_2_rle
+from annotation.Utils import binary_mask_to_rle, poly_2_rle
 
 def validate_rle(rle_list, width, height):
     total_pixels = width * height

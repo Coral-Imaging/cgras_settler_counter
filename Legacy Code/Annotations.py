@@ -2,6 +2,7 @@
 
 """
 annotation class to segment and create CVAT annotations
+Legacy code from the segmenter project, to be refactored and integrated into the annotation project
 """
 
 import os

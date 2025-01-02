@@ -1,7 +1,7 @@
 #! /usr/bin/env/python3
 
 """
-script to run a trained yolov8 segment model on unlabeled images, saving these results in cvat annotation form
+script to run a trained yolov8 segment model on unlabeled images, saving these results in cvat annotation form, used to bootstrap the cvat annotation process
 NOTE: Basefile must have been downloaded from cvat, with the images already loaded into the job
 """
 

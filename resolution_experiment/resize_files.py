@@ -6,7 +6,7 @@ resize data files in sepcified folder to specified resolutions for training at d
 Dorian Tsai
 2024 July 26
 """
-  
+  #Probably legacy code
   
 import os
 import cv2 as cv

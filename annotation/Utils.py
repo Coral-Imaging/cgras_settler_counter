@@ -2,7 +2,7 @@
 
 """
 Functions and varibles used for annotation and convertion to and from CVAT annotation style 
-As well as hellper functions for viewing predictions and robowflow sahi.
+As well as helper functions for viewing predictions and robowflow sahi.
 """
 
 import numpy as np
@@ -13,9 +13,7 @@ import supervision as sv
 classes = ["recruit_live_white", "recruit_cluster_live_white", "recruit_symbiotic", "recruit_cluster_symbiotic", "recruit_partial",
            "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown"] #how its in cvat
 
-classes = ["0", "1", "2", "3", "4",
-           "5", "6", "7", "8", "9", "10"]
-
+# Colours for each class
 orange = [255, 128, 0] 
 blue = [0, 212, 255] 
 purple = [170, 0, 255] 
@@ -180,6 +178,8 @@ def callback(image_slice: np.ndarray) -> sv.Detections:
         code.interact(local=dict(globals(), **locals()))
     return detections
 
+
+"Combine overlapping detections into a singluar mask"
 #TODO functionlise / simplify?
 def combine_detections(box_array, conf_list, cls_id_list, mask_list):
     updated_box_array, updated_conf_list, updated_class_id, updated_mask_list = [], [], [], []

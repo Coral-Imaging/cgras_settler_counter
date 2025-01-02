@@ -1,7 +1,8 @@
 #! /usr/bin/env/python3
 
 """
-quick bit of code to visualise the predition results using a trained yolov8 weights file (ideally from a trained run)
+Visualise the predition results using a trained yolov8 weights file (ideally from a trained run)
+For Mask predictions, also can label ground truth annotations on the image
 """
 
 from ultralytics import YOLO
@@ -17,8 +18,7 @@ import supervision as sv
 ultralitics_version = False #set to true, if want example of ultralitics prediction
 SAHI = False #set to true if using SAHI to look at 640p images
 batch = True #image too big / too many predictions to do in one go
-SAHI = False #set to true if using SAHI to look at 640p images
-batch = False #image too big / too many predictions to do in one go
+
 batch_height, batch_width = 3000, 3000
 #weight_file = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt" #dorian used
 weights_file_path = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/ultralytics_output/train4/weights/best.pt' #trained on 640 imgsz dataset combined 22 and 23
@@ -82,12 +82,12 @@ def add_ground_truth(image, txt, classes, class_colours, line_tickness, imgname)
     # imgsave_path = os.path.join(save_dir, os.path.basename(imgname)[:-4] + '_gt.jpg')
     # cv.imwrite(imgsave_path, image)
     print(f'number of ground truth annotiations: {len(points)}')
-            cls_name = classes[class_idx[idx]]
-            try:
-                cv.putText(image, f"{cls_name}", (int(np.min(pointers[:, 0])-20), int(np.min(pointers[:, 1]) - 5)), cv.FONT_HERSHEY_SIMPLEX, 3, class_colours[classes[class_idx[idx]]], 3)
-            except:
-                import code
-                code.interact(local=dict(globals(), **locals()))
+    cls_name = classes[class_idx[idx]]
+    try:
+        cv.putText(image, f"{cls_name}", (int(np.min(pointers[:, 0])-20), int(np.min(pointers[:, 1]) - 5)), cv.FONT_HERSHEY_SIMPLEX, 3, class_colours[classes[class_idx[idx]]], 3)
+    except:
+        import code
+        code.interact(local=dict(globals(), **locals()))
     return image
 
 def save_image_predictions_mask(results, image, imgname, save_path, conf, class_list, classes, class_colours, ground_truth=False, txt=None):
@@ -288,6 +288,8 @@ if SAHI:
 
 
 if ultralitics_version: #ultralytics code
+    ##Should have code, doesn't?
+    print("ultralitics code")
 elif not ultralitics_version:
     for i, imgname in enumerate(imglist):
         print(f'predictions on {i+1}/{len(imglist)}')

@@ -2,6 +2,8 @@
 
 """ pde_to_yolo.py
     Convert PDE annotations from CSV files to YOLO format
+    The class information was stored in the CSV file an the mask data were stored in ROIs, and was extract and converted to CVAT format for further labeling
+    Used in combination with ROI_2
 """
 import os
 import pandas as pd
@@ -10,7 +12,7 @@ import cv2 as cv
 import glob
 import re
 import math
-from Utils import poly_2_rle
+from annotation.Utils import poly_2_rle
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element, SubElement, ElementTree
 import zipfile

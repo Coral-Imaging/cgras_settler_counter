@@ -1,8 +1,10 @@
 #! /usr/bin/env python3
 
 """ robolflow_sahi_test.py
+
 trying to use roboflow to annotate images for sahi segemntation
 following this blog https://blog.roboflow.com/how-to-use-sahi-to-detect-small-objects/ 
+For more information https://github.com/obss/sahi
 """
 
 import supervision as sv

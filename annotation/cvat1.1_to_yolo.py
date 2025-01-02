@@ -1,5 +1,6 @@
 """Convert CVAT1.1 to YOLO Segmentation (v8)
         - PDE export from CVAT was not working when exported as other fromats, therefore created code to change from one labeling format to another
+        Works on masks only
 """
 
 import xml.etree.ElementTree as ET
