@@ -11,7 +11,7 @@ import glob
 from PIL import Image
 from shapely.geometry import Polygon, box, MultiPolygon, GeometryCollection
 from shapely.validation import explain_validity
-
+from annotation.Utils import classes, class_colours 
 full_res_dir = '//media/wardlewo/cslics_ssd/cgras_datasets/Seg+ClassTester/dataset_full_Images/valid'
 save_path = '/media/wardlewo/cslics_ssd/cgras_datasets/Seg+ClassTester/tilledImages/valid'
 TILE_WIDTH= 640
@@ -20,35 +20,7 @@ TRUNCATE_PERCENT = 0.5
 
 #images in one folder, labels in another. Only want to do images with an ossociated label file
 imglist = sorted(glob.glob(os.path.join(full_res_dir, 'images', '*.jpg')))
-
-classes = ["recruit_live_white", "recruit_cluster_live_white", "recruit_symbiotic", "recruit_symbiotic_cluster", "recruit_partial",
-           "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown"]
-orange = [255, 128, 0] 
-blue = [0, 212, 255] 
-purple = [170, 0, 255] 
-yellow = [255, 255, 0] 
-brown = [144, 65, 2] 
-green = [0, 255, 00] 
-red = [255, 0, 0]
-cyan = [0, 255, 255]
-dark_purple =  [128, 0, 128]
-light_grey =  [192, 192, 192] 
-dark_green = [0, 100, 0] 
-class_colours = {classes[0]: blue,
-                classes[1]: green,
-                classes[2]: purple,
-                classes[3]: yellow,
-                classes[4]: brown,
-                classes[5]: cyan,
-                classes[6]: orange,
-                classes[7]: red,
-                classes[8]: dark_purple,
-                classes[9]: light_grey,
-                classes[10]: dark_green}
-
-
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
-
 directory_count = 0
 
 def make_sub_dirctory_save(prefix, save_path):
@@ -116,7 +88,7 @@ def cut_n_save_img(x_start, x_end, y_start, y_end, np_img, img_save_path):
     cut_tile_img.save(img_save_path)
 
 def cut_annotation(x_start, x_end, y_start, y_end, lines, imgw, imgh):
-    """From lines in annotation file, find objects in the bounding box and return the renormalised xy points if there are any"""
+    """From instance lines in label file, find objects in the bounding box and return the renormalised xy points if there are any"""
     writeline = []
     for line in lines:
         parts = line.split()
@@ -171,9 +143,9 @@ def cut(img_name, save_img, test_name, save_labels, txt_name, img_no):
             # import code
             # code.interact(local=dict(globals(), **locals()))        
 
-def visualise(imgname, save_path):
+def visualise(imgdir, save_path):
     """Show all the annotations on to a set of cut images and save at save_path"""
-    imglist = glob.glob(os.path.join(imgname, '*.jpg'))
+    imglist = glob.glob(os.path.join(imgdir, '*.jpg'))
     for i, imgname in enumerate(imglist):
         print(f'visulasing image {i+1}/{len(imglist)}')
         base_name = os.path.basename(imgname[:-4])

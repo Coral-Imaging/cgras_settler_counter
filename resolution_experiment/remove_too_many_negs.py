@@ -1,5 +1,6 @@
 import os
 import shutil
+# TODO: Write comments and what it does 
 
 # Define paths
 labels_folder = "/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/train/labels"

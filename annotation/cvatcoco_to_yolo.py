@@ -2,6 +2,7 @@
 
 """ cvatcoco_to_yolo.py
     This script is used to convert a COCO dataset to YOLO format.
+    Works on masks and Bouding boxes.
 """
 
 from ultralytics.data.converter import convert_coco

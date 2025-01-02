@@ -3,7 +3,7 @@ Currently these edits and efforts cause too much memory usage and crashes the pr
 validity of these edits are unknown and simply don't cause more errors when run."""
 
 ### Path: sahi/models/yolov8.py
-### Editted by Java Terry, Januaray 2024 
+### Edited by Java Terry, Januaray 2024 
 ### Edits explained with '###' comments
 
 ### Overview of edits ###

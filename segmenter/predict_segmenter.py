@@ -9,7 +9,7 @@ import os
 import glob
 import cv2 as cv
 import matplotlib.pyplot as plt
-
+#Probably legacy code
 # load model
 model_path = '/home/dorian/Code/cgras_ws/cgras_settler_counter/segmenter/weights/20230606_overfit.pt'
 # load custom model (YOLOv8)
