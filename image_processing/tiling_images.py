@@ -12,11 +12,12 @@ from PIL import Image
 from shapely.geometry import Polygon, box, MultiPolygon, GeometryCollection
 from shapely.validation import explain_validity
 
-full_res_dir = '//media/wardlewo/cslics_ssd/cgras_datasets/Seg+ClassTester/dataset_full_Images/valid'
-save_path = '/media/wardlewo/cslics_ssd/cgras_datasets/Seg+ClassTester/tilledImages/valid'
+full_res_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/dec_17_split/train/'
+save_path = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/dec_17_split_n_tilled/'
 TILE_WIDTH= 640
 TILE_HEIGHT = 640
 TRUNCATE_PERCENT = 0.5
+prefix = 'train'
 
 #images in one folder, labels in another. Only want to do images with an ossociated label file
 imglist = sorted(glob.glob(os.path.join(full_res_dir, 'images', '*.jpg')))
@@ -49,7 +50,7 @@ class_colours = {classes[0]: blue,
 
 TILE_OVERLAP = round((TILE_HEIGHT+TILE_WIDTH)/2 * TRUNCATE_PERCENT)
 
-directory_count = 0
+directory_count = 2
 
 def make_sub_dirctory_save(prefix, save_path):
     save_train = os.path.join(save_path, f'{prefix}_{directory_count}')
@@ -61,7 +62,7 @@ def make_sub_dirctory_save(prefix, save_path):
     os.makedirs(save_labels, exist_ok=True)
     return save_images, save_labels
 
-save_img, save_labels = make_sub_dirctory_save(save_path)
+save_img, save_labels = make_sub_dirctory_save(prefix, save_path)
 
 def is_mostly_contained(polygon, x_start, x_end, y_start, y_end, threshold):
     """Returns true if a Shaply polygon has more then threshold percent in the area of a specified bounding box."""
@@ -215,8 +216,12 @@ def visualise(imgname, save_path):
 
 max_files = 16382
 for i, img in enumerate(imglist):
-    #save_img, save_labels = make_sub_dirctory_save(save_path)
-    print(imglist[i])
+    if i < 314:
+        continue
+    if i > 0 and i+426 % max_files == 0:
+        directory_count += 1
+        save_img, save_labels = make_sub_dirctory_save(prefix, save_path)
+
     name = os.path.basename(img)[:-4]
     img_name = os.path.join(full_res_dir,'images', name+'.jpg')
     txt_name = os.path.join(full_res_dir,'labels', name+'.txt')
