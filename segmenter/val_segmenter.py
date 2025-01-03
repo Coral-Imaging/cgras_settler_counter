@@ -1,9 +1,8 @@
 #! /usr/bin/env python3
 
 """val_segmenter.py
-validate a model against a dataset
+validate a model against a dataset. Gets TP FP FN TN, precision and recall scores.
 """
-#TODO: Rates of TP, FP, FN, TN
 #TODO: no of images in datset, info on what dataset is.
 from ultralytics import YOLO
 import numpy as np

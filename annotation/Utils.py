@@ -178,12 +178,66 @@ def callback(image_slice: np.ndarray) -> sv.Detections:
         code.interact(local=dict(globals(), **locals()))
     return detections
 
+def combine_2_annotations(box1, box2, cls_id_list, i, j, mask1, mask2):
+    """Combines 2 annotations that are overlaping
+    Args:
+        box1 (list): Bounding box coordinates of the first annotation [x1, y1, x2, y2].
+        box2 (list): Bounding box coordinates of the second annotation [x1, y1, x2, y2].
+        cls_id_list (list): List of class IDs for all annotations.
+        i (int): Index of the first annotation in the list.
+        j (int): Index of the second annotation in the list.
+        mask1 (tuple): Mask data for the first annotation, represented as 
+                       (mask_array, top_left_x, top_left_y, width, height).
+        mask2 (tuple): Mask data for the second annotation, represented as 
+                       (mask_array, top_left_x, top_left_y, width, height).
 
-"Combine overlapping detections into a singluar mask"
-#TODO functionlise / simplify?
+    Returns:
+        tuple: Combined annotation containing:
+            - new_box (list): Combined bounding box [x1, y1, x2, y2].
+            - new_class (int): Class ID of the combined annotation.
+            - new_conf (float): Confidence score of the combined annotation.
+            - new_mask (tuple): Combined mask data as (mask_array, top_left_x, top_left_y, width, height).
+    """
+    new_box = [min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[2], box2[2]), max(box1[3], box2[3])]
+    new_class = cls_id_list[i] if conf_list[i] > conf_list[j] else cls_id_list[j]
+    new_conf = (conf_list[i] + conf_list[j]) / 2
+    mask1_tl_x, mask1_tl_y, mask1_w, mask1_h = mask1[1], mask1[2], mask1[3], mask1[4]
+    mask2_tl_x, mask2_tl_y, mask2_w, mask2_h = mask2[1], mask2[2], mask2[3], mask2[4]
+    # New mask
+    new_tl_x, new_tl_y = min(mask1_tl_x, mask2_tl_x), min(mask1_tl_y, mask2_tl_y)
+    new_w = max(mask1_tl_x + mask1_w, mask2_tl_x + mask2_w) - new_tl_x
+    new_h = max(mask1_tl_y + mask1_h, mask2_tl_y + mask2_h) - new_tl_y
+    new_mask = np.zeros((new_h, new_w), dtype=np.uint8)
+    mask1_x_offset = mask1_tl_x - new_tl_x
+    mask1_y_offset = mask1_tl_y - new_tl_y
+    new_mask[mask1_y_offset:mask1_y_offset + mask1_h, mask1_x_offset:mask1_x_offset + mask1_w] = mask1[0]
+    mask2_x_offset = mask2_tl_x - new_tl_x
+    mask2_y_offset = mask2_tl_y - new_tl_y
+    new_mask[mask2_y_offset:mask2_y_offset + mask2_h, mask2_x_offset:mask2_x_offset + mask2_w] = np.logical_or(
+        new_mask[mask2_y_offset:mask2_y_offset + mask2_h, mask2_x_offset:mask2_x_offset + mask2_w], mask2[0]
+    ).astype(np.uint8)
+    return new_box, new_class, new_cof, new_mask
+
 def combine_detections(box_array, conf_list, cls_id_list, mask_list):
+     """
+    Combine overlapping detections into a singular mask.
+
+    Args:
+        box_array (list or np.ndarray): Array of bounding box coordinates in the form [[x1, y1, x2, y2], ...],
+                                        where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+        conf_list (list): List of confidence scores corresponding to each detection.
+        cls_id_list (list): List of class IDs corresponding to each detection.
+        mask_list (list): List of masks corresponding to each detection. Each mask is represented as a tuple:
+                          (mask_array, top_left_x, top_left_y, width, height).
+
+    Returns:
+        tuple: A tuple containing:
+            - np.ndarray: Updated array of combined bounding box coordinates.
+            - list: Updated list of confidence scores.
+            - list: Updated list of class IDs.
+            - list: Updated list of combined masks.
+    """
     updated_box_array, updated_conf_list, updated_class_id, updated_mask_list = [], [], [], []
-    overlap_count = 0
     combined_indices = set()
     for i, mask1 in enumerate(mask_list):
         if i in combined_indices:
@@ -197,26 +251,7 @@ def combine_detections(box_array, conf_list, cls_id_list, mask_list):
             box2 = box_array[j]
             if overlap_boxes(box1, box2): #assume only pairs overlap
                 overlap = True
-                overlap_count += 1
-                new_box = [min(box1[0], box2[0]), min(box1[1], box2[1]), max(box1[2], box2[2]), max(box1[3], box2[3])]
-                new_class = cls_id_list[i] if conf_list[i] > conf_list[j] else cls_id_list[j]
-                new_conf = (conf_list[i] + conf_list[j]) / 2
-                mask1_tl_x, mask1_tl_y, mask1_w, mask1_h = mask1[1], mask1[2], mask1[3], mask1[4]
-                mask2_tl_x, mask2_tl_y, mask2_w, mask2_h = mask2[1], mask2[2], mask2[3], mask2[4]
-                # New mask
-                new_tl_x, new_tl_y = min(mask1_tl_x, mask2_tl_x), min(mask1_tl_y, mask2_tl_y)
-                new_w = max(mask1_tl_x + mask1_w, mask2_tl_x + mask2_w) - new_tl_x
-                new_h = max(mask1_tl_y + mask1_h, mask2_tl_y + mask2_h) - new_tl_y
-                new_mask = np.zeros((new_h, new_w), dtype=np.uint8)
-                mask1_x_offset = mask1_tl_x - new_tl_x
-                mask1_y_offset = mask1_tl_y - new_tl_y
-                new_mask[mask1_y_offset:mask1_y_offset + mask1_h, mask1_x_offset:mask1_x_offset + mask1_w] = mask1[0]
-                mask2_x_offset = mask2_tl_x - new_tl_x
-                mask2_y_offset = mask2_tl_y - new_tl_y
-                new_mask[mask2_y_offset:mask2_y_offset + mask2_h, mask2_x_offset:mask2_x_offset + mask2_w] = np.logical_or(
-                    new_mask[mask2_y_offset:mask2_y_offset + mask2_h, mask2_x_offset:mask2_x_offset + mask2_w], mask2[0]
-                ).astype(np.uint8)
-                #print(f"Combining {i} and {j}")
+                new_box, new_class, new_cof, new_mask = combine_2_annotations(box1, box2, cls_id_list, i, j, mask1, mask2)
                 updated_box_array.append(new_box)
                 updated_conf_list.append(new_conf)
                 updated_class_id.append(new_class)
