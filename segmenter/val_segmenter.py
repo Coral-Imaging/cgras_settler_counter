@@ -104,9 +104,12 @@ data = np.array([[TPmean, TNmean], [FPmean, FNmean]])
 plot_results(data, conf_thresh, iou_thresh)
 
 precision, recall, F1 = p_r_f1(conf_mat_d, class_ignore=[2, 3, 4, 5, 6, 7, 8, 9, 10])
-print(precision, recall, F1)
 
+print("---------------Results---------------------")
 
+print(f"TP={TPmean:.4f}, FP={FPmean:.4f}, FN={FNmean:.4f}, TN={TNmean:.4f}")
+print(f"Precision={precision:.4f}, Recall={recall:.4f}, F1={F1:.4f}")
+print(f"mAP50={metrics_d.map50} mAP50-95={metrics_d.map:.4f}")
 ## Visulise instances
 
 
