@@ -1,8 +1,8 @@
 #! /usr/bin/env/python3
 
 """
-Visualise the predition results using a trained yolov8 weights file (ideally from a trained run)
-For Mask predictions, also can label ground truth annotations on the image
+Visualise the predition results using a trained yolov8 weights file
+    Works for both masks and bounding boxes, as well as options for SAHI
 """
 
 from ultralytics import YOLO
@@ -15,25 +15,26 @@ from PIL import Image
 from Utils import classes, class_colours, overlap_boxes, combine_detections, callback
 import supervision as sv
 
+# Visualise options
 ultralitics_version = False #set to true, if want example of ultralitics prediction
 SAHI = False #set to true if using SAHI to look at 640p images
 batch = True #image too big / too many predictions to do in one go
-
+just_groundtruth = False #if ground truth without predictions wanted
+bounding_boxes = False #if bounding boxes are to be visualised
 batch_height, batch_width = 3000, 3000
-#weight_file = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt" #dorian used
-weights_file_path = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/ultralytics_output/train4/weights/best.pt' #trained on 640 imgsz dataset combined 22 and 23
-#weights_file_path = "/home/java/Java/ultralytics/runs/segment/train21/weights/best.pt" #trained on 640 imgsz dataset combined 22 and 23
+
+# files / data locations
 weights_file_path = "/home/java/hpc-home/runs/240p_v8m_results/weights/best.pt"
-
 save_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/testsAndVisualisation/20243110_Pdae_Visualisation'
-img_folder = os.path.join('/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/test/images')
-save_dir = '/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/check_gt_UPDATED'
-img_folder = os.path.join('/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/images')
-#txt_folder = os.path.join(save_dir, 'train', 'labels')
-txt_folder = os.path.join('/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/test/labels')
-txt_folder = os.path.join('/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/labels')
+img_folder = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split/images'
+txt_folder = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split/labels'
 
-#save txt results like they would be saved by ultralytics
+# load model
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+model = YOLO(weights_file_path).to(device)
+slicer = sv.InferenceSlicer(callback=callback, slice_wh=(640, 640), overlap_ratio_wh=(0.1, 0.1))
+
+# functions
 def save_txt_predictions_masks(results, conf, class_list, save_path):
     """save_txt_predictions_masks
     writes a textfile for the segmentation results, saving the data as ultralytics does
@@ -82,12 +83,10 @@ def add_ground_truth(image, txt, classes, class_colours, line_tickness, imgname)
     # imgsave_path = os.path.join(save_dir, os.path.basename(imgname)[:-4] + '_gt.jpg')
     # cv.imwrite(imgsave_path, image)
     print(f'number of ground truth annotiations: {len(points)}')
+
     cls_name = classes[class_idx[idx]]
     try:
         cv.putText(image, f"{cls_name}", (int(np.min(pointers[:, 0])-20), int(np.min(pointers[:, 1]) - 5)), cv.FONT_HERSHEY_SIMPLEX, 3, class_colours[classes[class_idx[idx]]], 3)
-    except:
-        import code
-        code.interact(local=dict(globals(), **locals()))
     return image
 
 def save_image_predictions_mask(results, image, imgname, save_path, conf, class_list, classes, class_colours, ground_truth=False, txt=None):
@@ -118,8 +117,7 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
     else:
         print(f'No masks found in {imgname}')
     
-    if ground_truth & (txt is not None):
-        image = plot_ground_truth(image, txt, classes, class_colours, line_tickness, imgname)        
+    if ground_truth & (txt is not None):     
         image = add_ground_truth(image, txt, classes, class_colours, line_tickness)
 
     alpha = 0.5
@@ -132,6 +130,9 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
     # code.interact(local=dict(globals(), **locals()))
 
 def save_img_batch(image_cv, box_array, conf_list, cls_id_list, mask_list, image_name, save_dir):
+    """save_img_batch
+    saves the predicted masks from a batched image (no ground truth)
+    """
     height, width, _ = image_cv.shape
     masked = image_cv.copy()
     line_tickness = int(round(width)/600)
@@ -166,6 +167,7 @@ def save_img_batch(image_cv, box_array, conf_list, cls_id_list, mask_list, image
     cv.imwrite(imgsave_path, semi_transparent_mask)
 
 def update_lists(box_list, conf_list, cls_id_list, mask_list, sliced_detections, x, y, x_end, y_end):
+    #update the detection list for SAHI
     for box in sliced_detections.xyxy:
         box[0] += x
         box[1] += y
@@ -219,25 +221,20 @@ def save_img_sliced(slicer, image, image_file, save_dir):
     imgsave_path = os.path.join(save_dir, os.path.basename(image_file)[:-4] + '_t1.jpg')
     cv.imwrite(imgsave_path, semi_transparent_mask)
 
-# load model
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-model = YOLO(weights_file_path).to(device)
-slicer = sv.InferenceSlicer(callback=callback, slice_wh=(640, 640), overlap_ratio_wh=(0.1, 0.1))
-
+# run scipt
 print('Model Inference:')
-
 imglist = sorted(glob.glob(os.path.join(img_folder, '*.jpg')))
 txtlist = sorted(glob.glob(os.path.join(txt_folder, '*.txt')))
 imgsave_dir = save_dir
 os.makedirs(imgsave_dir, exist_ok=True)
 
-if not ultralitics_version:
+if not ultralitics_version and not SAHI and not just_groundtruth:
     for i, imgname in enumerate(imglist):
         print(f'predictions on {i+1}/{len(imglist)}')
-        if i >= 500: # for debugging purposes
-            break 
-            import code
-            code.interact(local=dict(globals(), **locals()))
+        # if i >= 500: # for debugging purposes
+        #     break 
+        #     import code
+        #     code.interact(local=dict(globals(), **locals()))
         
         image = cv.imread(imgname)
         results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
@@ -249,7 +246,6 @@ if not ultralitics_version:
         txt = txtlist[i]
         ground_truth = True
         save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours, ground_truth, txt)
-
 
 if SAHI:
     for i, imgname in enumerate(imglist):
@@ -285,32 +281,19 @@ if SAHI:
             image = add_ground_truth(image, txt, classes, class_colours, 2)
             save_img_sliced(slicer, image, imgname, save_dir)
 
-
-
-if ultralitics_version: #ultralytics code
-    ##Should have code, doesn't?
-    print("ultralitics code")
-elif not ultralitics_version:
+if just_groundtruth:
     for i, imgname in enumerate(imglist):
         print(f'predictions on {i+1}/{len(imglist)}')
         image = cv.imread(imgname)
-
         txt = txtlist[i]
-        # results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
-        # conf, class_list = [], [] 
-        # for j, b in enumerate(results[0].boxes):
-        #     conf.append(b.conf.item())
-        #     class_list.append(b.cls.item())
         ground_truth = True
-        #save_image_predictions_mask(results, image, imgname, imgsave_dir, conf, class_list, classes, class_colours, ground_truth, txt)
         image = add_ground_truth(image, txt, classes, class_colours, 4, imgname)
         imgsave_path = os.path.join(save_dir, os.path.basename(imgname)[:-4] + '_det_mask.jpg')
         cv.imwrite(imgsave_path, image)
-
         # import code
         # code.interact(local=dict(globals(), **locals()))
 
-elif ultralitics_version: #ultralytics code
+if ultralitics_version: #ultralytics code
     for i, imgname in enumerate(imglist):
         image = cv.imread(imgname)
         results = model.predict(source=image, iou=0.5, agnostic_nms=True)
@@ -326,11 +309,6 @@ elif ultralitics_version: #ultralytics code
             im = Image.fromarray(im_array[..., ::-1])
             im.show()
         
-
-# for interactive debugger in terminal:
-print("for bounding boxes below")
-import code
-code.interact(local=dict(globals(), **locals()))
 
 def save_image_predictions(results, image, imgname, save_path, classes, class_colours, ground_truth=False, txt=None):
     """save_image_predictions
@@ -367,18 +345,24 @@ def save_image_predictions(results, image, imgname, save_path, classes, class_co
     imgsavename = os.path.basename(imgname)
     imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det.jpg')
     cv.imwrite(imgsave_path, image)
-
-for i, imgname in enumerate(imglist):
+if bounding_boxes:
+    for i, imgname in enumerate(imglist):
         print(f'predictions on {i+1}/{len(imglist)}')
         #if i >= 10: # for debugging purposes
         #    break 
         #    import code
         #    code.interact(local=dict(globals(), **locals()))
         image = cv.imread(imgname)
-        results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)
-        
-        results = []
-        
+        results = model.predict(source=imgname, iou=0.5, agnostic_nms=True, imgsz=640)    
         txt = txtlist[i]
         ground_truth = True
         save_image_predictions(results, image, imgname, imgsave_dir, classes, class_colours,  ground_truth, txt)
+
+
+print("DONE")
+
+
+### OLD notes
+#weight_file = "/home/java/Java/ultralytics/runs/segment/train9/weights/cgras_yolov8n-seg_640p_20231209.pt" #dorian used
+#weights_file_path = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/ultralytics_output/train4/weights/best.pt' #trained on 640 imgsz dataset combined 22 and 23
+#weights_file_path = "/home/java/Java/ultralytics/runs/segment/train21/weights/best.pt" #trained on 640 imgsz dataset combined 22 and 23
