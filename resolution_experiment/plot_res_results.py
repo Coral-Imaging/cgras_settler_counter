@@ -13,11 +13,13 @@ import matplotlib.pyplot as plt
 
 resolutions = ['64p', '120p', '240p', '320p']
 runs_dir = '/home/java/hpc-home/runs'
-folder_name_extension = ['_v8x_results_ve', '_with_scale']
+folder_name_extension = ['_v8x_results_ve', '_with_scale', '_with_no_scale']
 txt_name = 'output.txt'
+save_plots_dir = '/home/java/Java/Cgras/Resolution_results/plots'
 Top_2_classes = False #set to true if just want to anaylise over Recruit Live White and Recruit Live Cluster White
+SHOW = True #True if plots created should be displayed or False to just save the plots
 
-#TODO 480p and 640p run with defult missing
+#TODO 480p and 640p run with defult missing,
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -53,7 +55,7 @@ def extract_confusion_matrix(file_path):
         return None
 
 def get_TP_FP_FN_TN(conf_mat, class_ignore=None):
-   """
+    """
     Calculates the average True Positive Rate (TPR), False Negative Rate (FNR),
     False Positive Rate (FPR), and True Negative Rate (TNR) from a confusion matrix,
     optionally ignoring specified classes.
@@ -185,12 +187,19 @@ for res in resolutions:
 for metric, values in results.items():
     plt.figure()
     for ext, vals in values.items():
-        plt.plot(resolutions, vals, marker='o', label=f"Experiment: {ext}")
-    plt.title(f"{metric} vs Resolution")
+        if ext == folder_name_extension[0]:
+            label="Experiment: Scale 0.5"
+        elif ext == folder_name_extension[1]:
+            label="Experiment: Scale 0.1"
+        else: label = "Experiment: Scale 0"
+        plt.plot(resolutions, vals, marker='o', label=label)
+    if Top_2_classes:
+        plt.title(f"Top 2 Classes: {metric} vs Resolution")
+    else: plt.title(f"{metric} vs Resolution")
     plt.xlabel("Resolution")
     plt.ylabel(metric)
     plt.legend()
     plt.grid()
-    #plt.savefig(f"{metric}_vs_resolution.png")
-    plt.show()
-    break
+    plt.savefig(f"{save_plots_dir}/{metric}.png")
+    if SHOW:
+        plt.show()

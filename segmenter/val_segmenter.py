@@ -112,6 +112,10 @@ print(f"Precision={precision:.4f}, Recall={recall:.4f}, F1={F1:.4f}")
 print(f"mAP50={metrics_d.map50} mAP50-95={metrics_d.map:.4f}")
 ## Visulise instances
 
+print(f"MAP50-90 for all classes{metrics_d.seg.map}")
+print(f"MAP50 for all classes {metrics_d.seg.map50}")
+print(f"MAP50-90 for each class: {metrics_d.seg.maps}") #including classes not trained on
+print(f"MAP50 for each class: {metrics_d.seg.ap50}") #excluding classes not trained on
 
 print("Done")
 import code
