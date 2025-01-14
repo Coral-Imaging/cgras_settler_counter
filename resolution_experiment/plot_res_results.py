@@ -11,15 +11,15 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 
-resolutions = ['64p', '120p', '240p', '320p']
+resolutions = ['64p', '120p', '240p', '320p', '480p']
 runs_dir = '/home/java/hpc-home/runs'
-folder_name_extension = ['_v8x_results_ve', '_with_scale', '_with_no_scale']
+folder_name_extension = ['_v8x_spec_class', '_with_scale', '_with_no_scale']
 txt_name = 'output.txt'
 save_plots_dir = '/home/java/Java/Cgras/Resolution_results/plots'
-Top_2_classes = False #set to true if just want to anaylise over Recruit Live White and Recruit Live Cluster White
+Top_2_classes = True #set to true if just want to anaylise over Recruit Live White and Recruit Live Cluster White
 SHOW = True #True if plots created should be displayed or False to just save the plots
 
-#TODO 480p and 640p run with defult missing,
+#TODO 640p run with defult missing,
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
