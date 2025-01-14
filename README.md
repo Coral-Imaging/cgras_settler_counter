@@ -70,7 +70,4 @@ Scripts for training and predicting coral settlers using a YOLO model:
 - **`original_sahi_yolov8`, `updated_sahi_yolov8`**: Updates to YOLOv8 SAHI model, later superseded by `roboflow_sahi`.  
 - **`temp_calc.py`**: Uses confusion matrices to compute YOLO model performance metrics.
 
----  
-
-## Contact Java
-Java Terry can be reached at '33javalava@gmail.com' or on '0444 584 863'
+---

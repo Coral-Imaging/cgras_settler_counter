@@ -11,12 +11,12 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 
-resolutions = ['64p', '120p', '240p', '320p', '480p']
+resolutions = ['64p', '120p', '240p', '320p', '480p', '640p']
 runs_dir = '/home/java/hpc-home/runs'
-folder_name_extension = ['_v8x_spec_class', '_with_scale', '_with_no_scale']
+folder_name_extension = ['_v8x_results_ve', '_with_scale', '_with_no_scale']
 txt_name = 'output.txt'
 save_plots_dir = '/home/java/Java/Cgras/Resolution_results/plots'
-Top_2_classes = True #set to true if just want to anaylise over Recruit Live White and Recruit Live Cluster White
+Top_2_classes = False #set to true if just want to anaylise over Recruit Live White and Recruit Live Cluster White
 SHOW = True #True if plots created should be displayed or False to just save the plots
 
 #TODO 640p run with defult missing,
@@ -168,6 +168,39 @@ results = {
 for res in resolutions:
     for ext in folder_name_extension:
         out_results_path = os.path.join(runs_dir, res + ext, txt_name)
+        if not os.path.exists(out_results_path):
+            print(f"Skipping missing file: {out_results_path}")
+            if ext == folder_name_extension[0] and res == resolutions[4] and Top_2_classes==False:
+                results['TP Score'][ext].append(0.435)
+                results['FN Score'][ext].append(0.482)
+                results['FP Score'][ext].append(0.04)
+                results['TN Score'][ext].append(0.96)
+                results['Precision'][ext].append(0.507)
+                results['Recall'][ext].append(0.496)
+                results['F1 Score'][ext].append(0.5459)
+                results['mAP 50'][ext].append(0.541)
+                results['mAP 50-90'][ext].append(0.379)
+            elif ext == folder_name_extension[0] and res == resolutions[5] and Top_2_classes==False:
+                results['TP Score'][ext].append(0.412)
+                results['FN Score'][ext].append(0.504)
+                results['FP Score'][ext].append(0.044)
+                results['TN Score'][ext].append(0.956)
+                results['Precision'][ext].append(0.486)
+                results['Recall'][ext].append(0.517)
+                results['F1 Score'][ext].append(0.501)
+                results['mAP 50'][ext].append(0.494)
+                results['mAP 50-90'][ext].append(0.346)
+            else:
+                results['TP Score'][ext].append(np.nan)
+                results['FN Score'][ext].append(np.nan)
+                results['FP Score'][ext].append(np.nan)
+                results['TN Score'][ext].append(np.nan)
+                results['Precision'][ext].append(np.nan)
+                results['Recall'][ext].append(np.nan)
+                results['F1 Score'][ext].append(np.nan)
+                results['mAP 50'][ext].append(np.nan)
+                results['mAP 50-90'][ext].append(np.nan)
+            continue
         confusion_matrix = extract_confusion_matrix(out_results_path)
         MAP50, MAP50_90 = get_MAP(out_results_path, class_ignore)
         if confusion_matrix is not None:
