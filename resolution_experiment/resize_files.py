@@ -2,7 +2,7 @@
 
 """resize_files.py
 
-resize data files in sepcified folder to specified resolutions for training at different resolutions
+resize data files in specified folder to specified resolutions for training at different resolutions
 Dorian Tsai
 2024 July 26
 """
