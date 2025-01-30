@@ -34,7 +34,7 @@ def change_class_to_zero(label_dir, output_dir):
         with open(output_path, "w") as f:
             f.write("\n".join(updated_lines) + "\n")
 
-    print(f"Processing complete. Modified label files saved in: {output_dir}")
+    print(f"Processing complete. Modified label files saved in: {output_dir} ")
 
 
 # Example usage
