@@ -103,8 +103,8 @@ def process_labels_and_images(label_dir, image_dir, output_dir, output_json_path
 
 # Example usage
 if __name__ == "__main__":
-    label_dir = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/labels"  
-    image_dir = "/media/java/CGRAS-SSD/cgras_data_copied_2240605/samples/cgras_data_copied_2240605_ultralytics_data/images" 
-    output_dir = "/home/java/hpc-home/data/Seg+ClassTester/class_with_fixed_labels"  
+    label_dir = "/home/java/Java/hpc-home/Data/cgras/2240605_cgras/test/labels"  
+    image_dir = "/home/java/Java/hpc-home/Data/cgras/2240605_cgras/test/images" 
+    output_dir = "/home/java/Java/hpc-home/Data/cgras/classifier/classifer_split/test"  
     output_json_path = os.path.join(output_dir, "classifier_data.json")
     process_labels_and_images(label_dir, image_dir, output_dir, output_json_path)

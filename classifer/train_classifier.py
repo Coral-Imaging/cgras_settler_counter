@@ -12,8 +12,7 @@ data_file = '/media/java/cslics_ssd/cslics_data/cslics_subsurface_data/cslics_20
 
 # load model
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-model = YOLO("yolov8n.pt")
-model = YOLO("/home/java/Java/cslics/resolution_test_results/models/resolution_test_640/weights/Cslic_640_best.pt")
+model = YOLO("yolov8x-cls.pt")
 model.info()
 
 
@@ -21,10 +20,11 @@ model.info()
 
 # classes arg is lightweight and simply ignore classes that are not included in the classes list, 
 # during train, val and predict, it has no effect on model architecture.
-model.train(data=data_file, 
+model.train(data=data_file,
+            classes     = [0,1,2,3,4,5,6,7],
             epochs      = 500, 
             batch       = -1,  
-            project     = "resolution_test_640",
+            project     = "classification_all_corals",
             workers     = 8,
             patience    = 50,
             pretrained  = False,

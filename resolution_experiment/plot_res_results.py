@@ -3,21 +3,28 @@
 """Script to generate plots of resolution experiment results
 
     Assumes: Each resolution experiment has in the ultralitics train folder has a txt file called [txt_name]
-        which has the pasted raw confusion matrix of the train results. #NOTE this is not automatically done.
+        which has the pasted raw confusion matrix of the train results. NOTE this is not automatically done.
 """
 
 import os
 import re
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import normalize
 
-resolutions = ['64p', '120p', '240p', '320p', '480p', '640p']
-runs_dir = '/home/java/hpc-home/runs'
-folder_name_extension = ['_v8x_results_ve', '_with_scale', '_with_no_scale']
+resolutions = ['96', '128', '160', '320', '640']
+runs_dir = '/home/java/Java/cslics/resolution_test_results/models'
+folder_name_extension = [
+    #'_v8n_results_ve', 
+    #'_v8n_results',
+    #'_with_scale', 
+    #'_with_no_scale'
+    '_resolution_test'
+    ]
 txt_name = 'output.txt'
-save_plots_dir = '/home/java/Java/Cgras/Resolution_results/plots'
+save_plots_dir = '/home/java/Java/cslics/resolution_test_results/plots'
 Top_2_classes = False #set to true if just want to anaylise over Recruit Live White and Recruit Live Cluster White
-SHOW = True #True if plots created should be displayed or False to just save the plots
+SHOW = False #True if plots created should be displayed or False to just save the plots
 
 #TODO 640p run with defult missing,
 import warnings
@@ -68,7 +75,6 @@ def get_TP_FP_FN_TN(conf_mat, class_ignore=None):
     """
     if class_ignore is None:
         class_ignore = []
-    
     tp_d = conf_mat.diagonal()
     fp_d = conf_mat.sum(1) - tp_d
     fn_d = conf_mat.sum(0) - tp_d
@@ -79,18 +85,19 @@ def get_TP_FP_FN_TN(conf_mat, class_ignore=None):
         row_sum = conf_mat[i, :].sum()
         col_sum = conf_mat[:, i].sum()
         tn_d[i] = total_samples - row_sum - col_sum + tp
-
+    
     mask = np.ones(conf_mat.shape[0], dtype=bool)
-    mask[class_ignore] = False
-
-    TPR = np.where((tp_d+ fn_d) > 0, tp_d/ (tp_d+ fn_d), 0)[mask]
-    FNR = np.where((tp_d+ fn_d) > 0, fn_d / (tp_d+ fn_d), 0)[mask]
-    FPR = np.where((fp_d+ tn_d) > 0, fp_d/ (fp_d+ tn_d), 0)[mask]
-    TNR = np.where((fp_d+ tn_d) > 0, tn_d / (fp_d+ tn_d), 0)[mask]
+    mask[class_ignore] = False    
+    TPR = np.where((tp_d + fn_d) > 0, tp_d / (tp_d + fn_d), 0)[mask]
+    FNR = np.where((tp_d + fn_d) > 0, fn_d / (tp_d + fn_d), 0)[mask]
+    FPR = np.where((fp_d + tn_d) > 0, fp_d / (fp_d + tn_d), 0)[mask]
+    TNR = np.where((fp_d + tn_d) > 0, tn_d / (fp_d + tn_d), 0)[mask]
     TPmean = np.mean(TPR)
     FNmean = np.mean(FNR)
     FPmean = np.mean(FPR)
-    TNmean = np.mean(TNR)
+    TNmean = np.mean(TNR) 
+    conf_mat = normalize(conf_mat, axis=0, norm='l1')
+    print(conf_mat)
     return TPmean, FNmean, FPmean, TNmean
 
 def p_r_f1(conf_mat, class_ignore=None):
@@ -136,8 +143,8 @@ def get_MAP(file_path, class_ignore=None):
         content = file.read()
     pattern = r"(?P<class_name>[a-zA-Z0-9_\- ]+)\s+(\d+)\s+(\d+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)"
     matches = re.finditer(pattern, content)
+    
     mAP50_values, mAP50_95_values, class_counter = [], [], -1
-
     for match in matches:
         mAP50 = float(match.group(10))
         mAP50_95 = float(match.group(11))
@@ -221,7 +228,7 @@ for metric, values in results.items():
     plt.figure()
     for ext, vals in values.items():
         if ext == folder_name_extension[0]:
-            label="Experiment: Scale 0.5"
+            label="Experiment: Scale 0.2"
         elif ext == folder_name_extension[1]:
             label="Experiment: Scale 0.1"
         else: label = "Experiment: Scale 0"

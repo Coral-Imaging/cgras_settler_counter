@@ -14,8 +14,8 @@ train_ratio = 0.70
 test_ratio = 0.15
 valid_ratio = 0.15
 
-data_locaton = '/media/java/cslics_ssd/SCU_Pdae_Data/RAWData/CutImages3x3/annotations_2024_10_08_code_conversion'
-save_dir_for_split = '/media/java/cslics_ssd/SCU_Pdae_Data/split2' 
+data_locaton = '/media/java/cslics_ssd/cgras_datasets/cgras_dataset_2022_100images/train'
+save_dir_for_split = '/home/java/Java/hpc-home/Data/cgras/2022_cgras_dataset_100images' 
 
 os.makedirs(save_dir_for_split, exist_ok=True)
 
