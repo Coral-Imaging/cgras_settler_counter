@@ -2,7 +2,10 @@ import os
 from pathlib import Path
 from tqdm import tqdm
 
-def change_class_to_zero(label_dir, output_dir):
+
+
+
+def change_class_to_zero(label_dir, output_dir, classes):
     """
     Modifies all label files to set the class ID to 0.
 
@@ -24,8 +27,15 @@ def change_class_to_zero(label_dir, output_dir):
         for line in lines:
             parts = line.strip().split()
             if len(parts) >= 5:  # Ensure it has at least a class ID and bounding box/polygon data
-                parts[0] = "0"  # Change the class ID to 0
-                updated_lines.append(" ".join(parts))
+                if parts[0].isdigit() and int(parts[0]) in classes:
+                    parts[0] = "0"  # Change the class ID to 0
+                    updated_lines.append(" ".join(parts))
+                elif parts[0].isdigit() and int(parts[0]) in [6,7]:
+                    updated_lines.append(" ".join(parts))
+                    print("Found class " + parts[0])
+                else:
+                    # Remove lines with invalid class IDs
+                    print(f"Skipping line with class ID not in {classes}: {parts[0]}")
             else:
                 print(f"Skipping malformed line in {label_file}: {line}")
 
@@ -39,5 +49,5 @@ def change_class_to_zero(label_dir, output_dir):
 
 # Example usage
 if __name__ == "__main__":
-    label_dir = "/media/wardlewo/cslics_ssd/cgras_datasets/Seg+ClassTester/Seg_test/test/labels"  # Path to original labels
-    change_class_to_zero(label_dir, label_dir)
+    label_dir = "/home/java/Java/hpc-home/Data/cgras/seg_test/2_class_alive_dead_corals/2240605_cgras/valid/labels"  # Path to original labels
+    change_class_to_zero(label_dir, label_dir, classes=[0, 1, 2, 3, 4, 5])  
