@@ -24,10 +24,10 @@ bounding_boxes = False #if bounding boxes are to be visualised
 batch_height, batch_width = 3000, 3000
 
 # files / data locations
-weights_file_path = "/home/java/hpc-home/runs/240p_v8m_results/weights/best.pt"
-save_dir = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/testsAndVisualisation/20243110_Pdae_Visualisation'
-img_folder = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split/images'
-txt_folder = '/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split/labels'
+weights_file_path = "/mnt/hpccs01/home/wardlewo/20250205_cgras_segmentation_alive_dead/train7/weights/best.pt"
+save_dir = '/mnt/hpccs01/home/wardlewo/Data/Visualisation'
+img_folder = '/mnt/hpccs01/home/wardlewo/Data/cgras/cgras_23_n_24_combined/20241219_improved_label_dataset_S+P+NegsReduced+Altered_Labels/test_0/labels/images/'
+txt_folder = '/mnt/hpccs01/home/wardlewo/Data/cgras/cgras_23_n_24_combined/20241219_improved_label_dataset_S+P+NegsReduced+Altered_Labels/test_0/labels/labels/'
 
 # load model
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -58,12 +58,16 @@ def add_ground_truth(image, txt, classes, class_colours, line_tickness, imgname)
     """add_ground_truth
     adds the ground truth annotiations onto an image. Assumed groundtruth is masks
     """
+    line_tickness = 2
     height, width, _ = image.shape
     points_normalised, points, class_idx = [], [], []
     with open(txt, "r") as file:
         lines = file.readlines()
     for line in lines:
         data = line.strip().split()
+        if len(data) < 1:
+            print(f'Invalid data in {txt}: {line}')
+            continue
         class_idx.append(int(data[0]))
         points_normalised.append([float(val) for val in data[1:]])
     for data in points_normalised:
@@ -79,15 +83,17 @@ def add_ground_truth(image, txt, classes, class_colours, line_tickness, imgname)
             print(f'invalid line of data length: {len(data)}, related to img {imgname}')
     for idx in range(len(class_idx)):
         pointers = np.array(points[idx], np.int32).reshape(-1,2)
-        cv.polylines(image, [pointers], True, class_colours[classes[class_idx[idx]]], line_tickness)
-    # imgsave_path = os.path.join(save_dir, os.path.basename(imgname)[:-4] + '_gt.jpg')
-    # cv.imwrite(imgsave_path, image)
+        cv.polylines(image, [pointers], True, (0, 0, 0), line_tickness)  # Make polylines black
+        # Calculate the center right-most point
+        text_x = max(pointers[:, 0])
+        text_y = pointers[pointers[:, 0].argmax(), 1]
+        cls_name = classes[class_idx[idx]]
+        font_size = 1.5  # Reduced font size
+        font_thickness = 2  # Reduced font thickness
+        cv.putText(image, f"gt:{cls_name}", (text_x, text_y), cv.FONT_HERSHEY_SIMPLEX, font_size, (0, 0, 0), font_thickness)  # Make text black
     print(f'number of ground truth annotiations: {len(points)}')
-
-    cls_name = classes[class_idx[idx]]
-    try:
-        cv.putText(image, f"{cls_name}", (int(np.min(pointers[:, 0])-20), int(np.min(pointers[:, 1]) - 5)), cv.FONT_HERSHEY_SIMPLEX, 3, class_colours[classes[class_idx[idx]]], 3)
     return image
+
 
 def save_image_predictions_mask(results, image, imgname, save_path, conf, class_list, classes, class_colours, ground_truth=False, txt=None):
     """save_image_predictions_mask
@@ -97,8 +103,8 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
     height, width, _ = image.shape
     masked = image.copy()
     line_tickness = int(round(width)/600)
-    font_size = 1#int(round(line_tickness/2))
-    font_thickness = 1#3*(abs(line_tickness-font_size))+font_size
+    font_size = 1.5#int(round(line_tickness/2))
+    font_thickness = 2#3*(abs(line_tickness-font_size))+font_size
     if results and results[0].masks:
         for j, m in enumerate(results[0].masks):
             xyn = np.array(m.xyn)
@@ -113,12 +119,15 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
                 cv.fillPoly(masked, [points], desired_color)
                 xmin = min(xyn[0, :, 0])
                 ymin = min(xyn[0, :, 1])
-                cv.putText(image, f"{conf[j]:.2f}: {cls_name}", (int(xmin-20), int(ymin - 5)), cv.FONT_HERSHEY_SIMPLEX, font_size, desired_color, font_thickness)
+                # Draw black outline
+                cv.putText(image, f"{conf[j]:.2f}: {cls_name}", (int(xmin-20), int(ymin - 15)), cv.FONT_HERSHEY_SIMPLEX, font_size, (0, 0, 0), font_thickness + 1)
+                # Draw text in class color
+                cv.putText(image, f"{conf[j]:.2f}: {cls_name}", (int(xmin-20), int(ymin - 15)), cv.FONT_HERSHEY_SIMPLEX, font_size, desired_color, font_thickness)
     else:
         print(f'No masks found in {imgname}')
     
-    if ground_truth & (txt is not None):     
-        image = add_ground_truth(image, txt, classes, class_colours, line_tickness)
+    if ground_truth & (txt is not None) & (txt != ''):     
+        image = add_ground_truth(image, txt, classes, class_colours, line_tickness, imgname)
 
     alpha = 0.5
     semi_transparent_mask = cv.addWeighted(image, 1-alpha, masked, alpha, 0)
@@ -157,7 +166,10 @@ def save_img_batch(image_cv, box_array, conf_list, cls_id_list, mask_list, image
         for t, b in enumerate(box_array):
             cls = classes[int(cls_id_list[t])]
             desired_color = class_colours[cls]
-            cv.putText(image_cv, f"{conf_list[t]:.2f}: {cls}", (int(b[0]-20), int(b[1] - 5)), cv.FONT_HERSHEY_SIMPLEX, font_size, desired_color, font_thickness)
+            # Draw black outline
+            cv.putText(image_cv, f"{conf_list[t]:.2f}: {cls}", (int(b[0]-20), int(b[1] - 15)), cv.FONT_HERSHEY_SIMPLEX, font_size, (0, 0, 0), font_thickness + 1)
+            # Draw text in class color
+            cv.putText(image_cv, f"{conf_list[t]:.2f}: {cls}", (int(b[0]-20), int(b[1] - 15)), cv.FONT_HERSHEY_SIMPLEX, font_size, desired_color, font_thickness)
     else:
         print(f'No masks found in {image_name}')
     alpha = 0.5

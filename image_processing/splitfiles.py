@@ -14,8 +14,8 @@ train_ratio = 0.70
 test_ratio = 0.15
 valid_ratio = 0.15
 
-data_locaton = '/media/java/cslics_ssd/cgras_datasets/cgras_dataset_2022_100images/train'
-save_dir_for_split = '/home/java/Java/hpc-home/Data/cgras/2022_cgras_dataset_100images' 
+data_locaton = '/mnt/hpccs01/home/wardlewo/Data/cgras/cgras_23_n_24_combined/20241219_improved_label_dataset_full_subimages'
+save_dir_for_split = '/mnt/hpccs01/home/wardlewo/Data/cgras/cgras_23_n_24_combined/20241219_improved_label_dataset_full_split+subimages' 
 
 os.makedirs(save_dir_for_split, exist_ok=True)
 
