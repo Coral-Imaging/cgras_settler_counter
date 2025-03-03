@@ -132,7 +132,7 @@ def save_image_predictions_mask(results, image, imgname, save_path, conf, class_
     alpha = 0.5
     semi_transparent_mask = cv.addWeighted(image, 1-alpha, masked, alpha, 0)
     imgsavename = os.path.basename(imgname)
-    imgsave_path = os.path.join(save_dir, imgsavename[:-4] + '_det_mask.jpg')
+    imgsave_path = os.path.join(save_path, imgsavename[:-4] + '_det_mask.jpg')
     cv.imwrite(imgsave_path, semi_transparent_mask)
 
     # import code
