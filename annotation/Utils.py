@@ -10,7 +10,7 @@ import cv2 as cv
 import matplotlib.pyplot as plt
 import supervision as sv
 
-classes = ["recruit_live_white", "recruit_cluster_live_white", "recruit_symbiotic", "recruit_cluster_symbiotic", "recruit_partial",
+classes = ["alive_coral", "dead_coral", "recruit_symbiotic", "recruit_cluster_symbiotic", "recruit_partial",
            "recruit_cluster_partial", "recruit_dead", "recruit_cluster_dead", "grazer_snail", "pest_tubeworm", "unknown"] #how its in cvat
 
 # Colours for each class
@@ -219,7 +219,7 @@ def combine_2_annotations(box1, box2, cls_id_list, i, j, mask1, mask2):
     return new_box, new_class, new_cof, new_mask
 
 def combine_detections(box_array, conf_list, cls_id_list, mask_list):
-     """
+    """
     Combine overlapping detections into a singular mask.
 
     Args:

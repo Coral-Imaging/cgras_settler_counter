@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 
 
-def change_class_to_zero(label_dir, output_dir, classes):
+def change_class_to_zero(label_dir, output_dir, classes, DeadClasses = [6,7]):
     """
     Modifies all label files to set the class ID to 0.
 
@@ -26,15 +26,15 @@ def change_class_to_zero(label_dir, output_dir, classes):
         updated_lines = []
         for line in lines:
             parts = line.strip().split()
-            if len(parts) >= 5:  # Ensure it has at least a class ID and bounding box/polygon data
-                if parts[0].isdigit() and int(parts[0]) in classes:
-                    parts[0] = "0"  # Change the class ID to 0
+            if len(parts) >= 5:  #  class ID and bounding box/polygon data
+                if parts[0].isdigit() and int(parts[0]) in classes: #If Alive
+                    parts[0] = "0" 
                     updated_lines.append(" ".join(parts))
-                elif parts[0].isdigit() and int(parts[0]) in [6,7]:
+                elif parts[0].isdigit() and int(parts[0]) in DeadClasses: #If Dead
+                    print("Found class dead " + parts[0])
+                    parts[0] = "1"  
                     updated_lines.append(" ".join(parts))
-                    print("Found class " + parts[0])
-                else:
-                    # Remove lines with invalid class IDs
+                else: #Any that isn't coral
                     print(f"Skipping line with class ID not in {classes}: {parts[0]}")
             else:
                 print(f"Skipping malformed line in {label_file}: {line}")
@@ -49,5 +49,6 @@ def change_class_to_zero(label_dir, output_dir, classes):
 
 # Example usage
 if __name__ == "__main__":
-    label_dir = "/home/java/Java/hpc-home/Data/cgras/seg_test/2_class_alive_dead_corals/2240605_cgras/valid/labels"  # Path to original labels
-    change_class_to_zero(label_dir, label_dir, classes=[0, 1, 2, 3, 4, 5])  
+    label_dir = "/mnt/hpccs01/home/wardlewo/Data/cgras/cgras_23_n_24_combined/20241219_improved_label_dataset_S+P+RemovedNegs/test_0/labels/labels"  # Path to original labels
+    output_dir = "/mnt/hpccs01/home/wardlewo/Data/cgras/cgras_23_n_24_combined/20241219_improved_label_dataset_S+P+NegsReduced+Altered_Labels/test_0/labels/labels"  # Path to save modified labels
+    change_class_to_zero(label_dir, output_dir, classes=[0, 1, 2, 3, 4, 5])  

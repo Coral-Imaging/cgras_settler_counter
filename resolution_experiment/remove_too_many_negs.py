@@ -1,50 +1,70 @@
 import os
 import shutil
-# TODO: Write comments and what it does 
+from concurrent.futures import ThreadPoolExecutor
 
-# Define paths
-labels_folder = "/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/train/labels"
-images_folder = "/media/wardlewo/cslics_ssd/SCU_Pdae_Data/split and tilling/train/images"
-destination_folder = "/media/wardlewo/cslics_ssd/SCU_Pdae_Data/reduced_negs_dataset/train"
+def find_valid_folders(root_folder):
+    """Find folders that contain both 'images' and 'labels' subfolders."""
+    valid_folders = []
+    for dirpath, dirnames, _ in os.walk(root_folder):
+        if 'images' in dirnames and 'labels' in dirnames:
+            valid_folders.append(dirpath)
+    return valid_folders
 
-# Ensure the destination folders exist
-os.makedirs(destination_folder, exist_ok=True)
-
-# Get lists of label files
-label_files = [f for f in os.listdir(labels_folder) if f.endswith('.txt')]
-
-# Separate non-empty and empty label files
-non_empty_labels = [f for f in label_files if os.path.getsize(os.path.join(labels_folder, f)) > 0]
-empty_labels = [f for f in label_files if os.path.getsize(os.path.join(labels_folder, f)) == 0]
-print("Number of non-empty labels found: ",len(non_empty_labels))
-print("Number of empty labels found: ",len(empty_labels))
-# Ensure equal counts of non-empty and empty labels
-selected_empty_labels = empty_labels[:len(non_empty_labels)]
-
-# Combine the selected label files
-selected_labels = non_empty_labels + selected_empty_labels
-print("Total number of labels in new dataset: ",len(selected_labels))
-# Process files
-for label_file in selected_labels:
-    label_path = os.path.join(labels_folder, label_file)
+def process_folder(labels_folder, images_folder, destination_folder, root_folder):
+    """Process a single folder containing images and labels."""
+    # Get lists of label files
+    label_files = [f for f in os.listdir(labels_folder) if f.endswith('.txt')]
     
-    # Find corresponding image file
-    image_file = label_file.replace('.txt', '.jpg')
-    image_path = os.path.join(images_folder, image_file)
+    # Separate non-empty and empty label files
+    non_empty_labels = [f for f in label_files if os.path.getsize(os.path.join(labels_folder, f)) > 0]
+    empty_labels = [f for f in label_files if os.path.getsize(os.path.join(labels_folder, f)) == 0]
+    print(f"Processing {labels_folder}:")
+    print("Number of non-empty labels found:", len(non_empty_labels))
+    print("Number of empty labels found:", len(empty_labels))
     
-    if os.path.exists(image_path):
-        # Define destination paths
-        label_dest = os.path.join(destination_folder, "labels", label_file)
-        image_dest = os.path.join(destination_folder, "images", image_file)
+    # Ensure equal counts of non-empty and empty labels
+    selected_empty_labels = empty_labels[:len(non_empty_labels)]
+    selected_labels = non_empty_labels + selected_empty_labels
+    print("Total number of labels in new dataset:", len(selected_labels))
+    
+    for label_file in selected_labels:
+        label_path = os.path.join(labels_folder, label_file)
+        image_file = label_file.replace('.txt', '.jpg')
+        image_path = os.path.join(images_folder, image_file)
         
-        # Create subdirectories if not exist
-        os.makedirs(os.path.dirname(label_dest), exist_ok=True)
-        os.makedirs(os.path.dirname(image_dest), exist_ok=True)
-        
-        # Copy files to destination
-        shutil.copy(label_path, label_dest)
-        shutil.copy(image_path, image_dest)
-    else:
-        print(f"Image not found for label: {label_file}")
+        if os.path.exists(image_path):
+            # Define relative path for maintaining structure
+            relative_path = os.path.relpath(labels_folder, root_folder)
+            label_dest = os.path.join(destination_folder, relative_path, "labels", label_file)
+            image_dest = os.path.join(destination_folder, relative_path, "images", image_file)
+            
+            # Create subdirectories if not exist
+            os.makedirs(os.path.dirname(label_dest), exist_ok=True)
+            os.makedirs(os.path.dirname(image_dest), exist_ok=True)
+            
+            # Copy files to destination
+            shutil.copy(label_path, label_dest)
+            shutil.copy(image_path, image_dest)
+        else:
+            print(f"Image not found for label: {label_file}")
 
-print("File transfer complete.")
+def main():
+    root_folder = "/mnt/hpccs01/home/wardlewo/Data/cgras/cgras_23_n_24_combined/20241219_improved_label_dataset_split+patches/cgras_labels_fixed_split_n_tilled"
+    destination_folder = "/mnt/hpccs01/home/wardlewo/Data/cgras/cgras_23_n_24_combined/20241219_improved_label_dataset_S+P+RemovedNegs"
+    
+    valid_folders = find_valid_folders(root_folder)
+    
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        for folder in valid_folders:
+            labels_folder = os.path.join(folder, "labels")
+            images_folder = os.path.join(folder, "images")
+            futures.append(executor.submit(process_folder, labels_folder, images_folder, destination_folder, root_folder))
+        
+        for future in futures:
+            future.result()  # Wait for all threads to complete
+    
+    print("File transfer complete.")
+
+if __name__ == "__main__":
+    main()
